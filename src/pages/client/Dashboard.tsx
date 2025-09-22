@@ -56,17 +56,7 @@ export default function ClientDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Button 
-          asChild 
-          className="h-auto p-4 bg-gradient-primary hover:bg-primary-hover"
-        >
-          <Link to="/simulacao" className="flex flex-col items-center space-y-2">
-            <Plus className="h-6 w-6" />
-            <span>Simular Novo Seguro</span>
-          </Link>
-        </Button>
-        
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Button 
           asChild 
           variant="outline" 
@@ -129,15 +119,9 @@ export default function ClientDashboard() {
             <div className="text-center py-8">
               <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">Nenhuma apólice encontrada</h3>
-              <p className="text-muted-foreground mb-4">
-                Você ainda não possui seguros ativos. Que tal simular um novo seguro?
+              <p className="text-muted-foreground">
+                Você ainda não possui seguros ativos.
               </p>
-              <Button asChild>
-                <Link to="/simulacao">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Simular Seguro
-                </Link>
-              </Button>
             </div>
           )}
         </CardContent>
