@@ -58,6 +58,7 @@ export default function Register() {
     try {
         await createCliente({
           des_usuario: name,
+          nome: name,
           email: email,
           telefone: phone.replace(/\D/g, ''),
           cpf: cpf.replace(/\D/g, ''),
@@ -66,7 +67,7 @@ export default function Register() {
           bairro: 'Centro',
           cidade: 'Cidade Exemplo',
           estado: 'SP',
-          password: password,
+          senha: password,
           role: role
         });
       toast({
