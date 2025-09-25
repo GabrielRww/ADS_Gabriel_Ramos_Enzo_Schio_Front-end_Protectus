@@ -39,8 +39,8 @@ api.interceptors.response.use(
 );
 
 // === Autenticação ===
-export const login = async (payload: { email: string; senha: string }) => {
-  const resp = await api.post("/auth/login", payload);
+export const loginCliente = async (payload: { email: string; senha: string }): Promise<any> => {
+  const resp = await api.post("/auth/login-cliente", payload);
   // resp.data esperado: { access_token, user }
   if (resp?.data?.access_token) {
     localStorage.setItem("access_token", resp.data.access_token);
