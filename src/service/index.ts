@@ -48,11 +48,11 @@ export const loginCliente = async (payload: { email: string; senha: string }): P
   return resp.data;
 };
 
-export const logout = async (cod_funcionario?: number) => {
-  // o backend espera Authorization header (o interceptor injeta) e possivelmente o body com cod_funcionario
-  const resp = await api.post("/auth/logout", { cod_funcionario });
+// Importante: rota /auth/logout não existe no backend atual.
+// Para evitar 404 e preflight desnecessários, tornamos o logout sem chamadas de rede.
+export const logout = async (_cod_funcionario?: number) => {
   localStorage.removeItem("access_token");
-  return resp.data;
+  return { success: true };
 };
 
 // === Users / Clientes / Funcionários (wrappers das rotas do gateway) ===

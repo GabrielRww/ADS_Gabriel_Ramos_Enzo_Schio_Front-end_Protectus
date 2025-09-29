@@ -1,63 +1,101 @@
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileText, Download, Eye, Search, Filter, Car, Home, Smartphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { usePolicies, type Policy } from '@/hooks/usePolicies';
+import { apiService } from '@/lib/api';
 
 export default function Apolices() {
   const { toast } = useToast();
+  const { policies, stats, loading } = usePolicies();
+  const [query, setQuery] = useState('');
+  const [tipoFilter, setTipoFilter] = useState<'todos' | 'veiculo' | 'residencial' | 'celular'>('todos');
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'ativo' | 'pendente' | 'cancelado'>('todos');
+  const [selected, setSelected] = useState<Policy | null>(null);
 
-  const handleDownload = (apoliceId: string) => {
-    toast({
-      title: "Download iniciado",
-      description: `A apólice ${apoliceId} está sendo baixada.`,
+  const filtered = useMemo(() => {
+    return policies.filter((p) => {
+      const matchQuery = !query || `${p.id} ${p.tipo} ${p.objeto}`.toLowerCase().includes(query.toLowerCase());
+      const matchTipo =
+        tipoFilter === 'todos' ||
+        (tipoFilter === 'veiculo' && p.tipo === 'Veículo') ||
+        (tipoFilter === 'residencial' && p.tipo === 'Residencial') ||
+        (tipoFilter === 'celular' && p.tipo === 'Celular');
+      const matchStatus =
+        statusFilter === 'todos' ||
+        (statusFilter === 'ativo' && p.status === 'Ativo') ||
+        (statusFilter === 'pendente' && p.status === 'Pendente') ||
+        (statusFilter === 'cancelado' && p.status === 'Cancelado');
+      return matchQuery && matchTipo && matchStatus;
     });
+  }, [policies, query, tipoFilter, statusFilter]);
+
+  const handleClearFilters = () => {
+    setQuery('');
+    setTipoFilter('todos');
+    setStatusFilter('todos');
   };
 
-  const apolices = [
-    {
-      id: 'AP001',
-      tipo: 'Veículo',
-      objeto: 'Honda Civic - ABC-1234',
-      status: 'Ativo',
-      vigencia: '23/05/2024 - 23/05/2025',
-      valor: 'R$ 149,90/mês',
-      icone: Car,
-      cor: 'success'
-    },
-    {
-      id: 'AP002',
-      tipo: 'Residencial',
-      objeto: 'Rua das Flores, 123',
-      status: 'Ativo',
-      vigencia: '15/08/2024 - 15/08/2025',
-      valor: 'R$ 89,90/mês',
-      icone: Home,
-      cor: 'success'
-    },
-    {
-      id: 'AP003',
-      tipo: 'Celular',
-      objeto: 'iPhone 14 Pro',
-      status: 'Pendente',
-      vigencia: 'Aguardando aprovação',
-      valor: 'R$ 29,90/mês',
-      icone: Smartphone,
-      cor: 'warning'
-    },
-    {
-      id: 'AP004',
-      tipo: 'Veículo',
-      objeto: 'Toyota Corolla - XYZ-5678',
-      status: 'Cancelado',
-      vigencia: '10/01/2024 - 10/01/2025',
-      valor: 'R$ 134,90/mês',
-      icone: Car,
-      cor: 'destructive'
+  const tryPrintFallback = (p: Policy) => {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    const html = `
+      <html>
+        <head>
+          <title>Apólice ${p.id}</title>
+          <meta charset="utf-8" />
+          <style>
+            body{ font-family: Arial, sans-serif; padding:24px; }
+            h1{ font-size:20px; }
+            .row{ margin:8px 0; }
+            .label{ color:#666; font-size:12px; }
+            .value{ font-size:14px; }
+          </style>
+        </head>
+        <body>
+          <h1>Apólice ${p.id}</h1>
+          <div class="row"><span class="label">Tipo:</span> <span class="value">${p.tipo}</span></div>
+          <div class="row"><span class="label">Objeto:</span> <span class="value">${p.objeto}</span></div>
+          <div class="row"><span class="label">Status:</span> <span class="value">${p.status}</span></div>
+          <div class="row"><span class="label">Vigência:</span> <span class="value">${p.vigencia}</span></div>
+          <div class="row"><span class="label">Valor:</span> <span class="value">${p.valor}</span></div>
+          <script>window.onload = () => window.print();</script>
+        </body>
+      </html>
+    `;
+    w.document.write(html);
+    w.document.close();
+  };
+
+  const handleDownload = async (p: Policy) => {
+    try {
+      // Tenta baixar do backend se existir endpoint
+      const blob = await apiService.downloadPolicyPdf?.(p.id);
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `apolice-${p.id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        return;
+      }
+      // Fallback para impressão/salvar em PDF
+      toast({ title: 'Gerando PDF', description: 'Abrindo visualização para salvar em PDF.' });
+      tryPrintFallback(p);
+    } catch (e) {
+      // Fallback para impressão/salvar em PDF
+      toast({ title: 'Gerando PDF', description: 'Abrindo visualização para salvar em PDF.' });
+      tryPrintFallback(p);
     }
-  ];
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -93,10 +131,10 @@ export default function Apolices() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar apólice..." className="pl-10" />
+              <Input placeholder="Buscar apólice..." className="pl-10" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
             
-            <Select>
+            <Select value={tipoFilter} onValueChange={(v: any) => setTipoFilter(v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Tipo de seguro" />
               </SelectTrigger>
@@ -108,7 +146,7 @@ export default function Apolices() {
               </SelectContent>
             </Select>
 
-            <Select>
+            <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -120,7 +158,7 @@ export default function Apolices() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={handleClearFilters}>
               Limpar Filtros
             </Button>
           </div>
@@ -134,7 +172,7 @@ export default function Apolices() {
             <div className="flex items-center space-x-2">
               <FileText className="h-8 w-8 text-primary" />
               <div>
-                <p className="text-2xl font-bold">4</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
                 <p className="text-sm text-muted-foreground">Total de Apólices</p>
               </div>
             </div>
@@ -148,7 +186,7 @@ export default function Apolices() {
                 <div className="h-4 w-4 bg-success rounded-full"></div>
               </div>
               <div>
-                <p className="text-2xl font-bold">2</p>
+                <p className="text-2xl font-bold">{stats.ativas}</p>
                 <p className="text-sm text-muted-foreground">Ativas</p>
               </div>
             </div>
@@ -162,7 +200,7 @@ export default function Apolices() {
                 <div className="h-4 w-4 bg-warning rounded-full"></div>
               </div>
               <div>
-                <p className="text-2xl font-bold">1</p>
+                <p className="text-2xl font-bold">{stats.pendentes}</p>
                 <p className="text-sm text-muted-foreground">Pendentes</p>
               </div>
             </div>
@@ -176,7 +214,7 @@ export default function Apolices() {
                 <div className="h-4 w-4 bg-destructive rounded-full"></div>
               </div>
               <div>
-                <p className="text-2xl font-bold">1</p>
+                <p className="text-2xl font-bold">{stats.canceladas}</p>
                 <p className="text-sm text-muted-foreground">Canceladas</p>
               </div>
             </div>
@@ -186,8 +224,8 @@ export default function Apolices() {
 
       {/* Lista de Apólices */}
       <div className="space-y-4">
-        {apolices.map((apolice) => {
-          const IconeComponent = apolice.icone;
+        {filtered.map((apolice) => {
+          const IconeComponent = apolice.tipo === 'Veículo' ? Car : apolice.tipo === 'Residencial' ? Home : Smartphone;
           return (
             <Card key={apolice.id}>
               <CardContent className="p-6">
@@ -216,7 +254,7 @@ export default function Apolices() {
                     </div>
                     
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => setSelected(apolice)}>
                         <Eye className="h-4 w-4 mr-2" />
                         Visualizar
                       </Button>
@@ -225,7 +263,7 @@ export default function Apolices() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => handleDownload(apolice.id)}
+                          onClick={() => handleDownload(apolice)}
                         >
                           <Download className="h-4 w-4 mr-2" />
                           Download PDF
@@ -267,6 +305,24 @@ export default function Apolices() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal Visualização */}
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Detalhes da Apólice {selected?.id}</DialogTitle>
+          </DialogHeader>
+          {selected && (
+            <div className="space-y-2">
+              <div><strong>Tipo:</strong> {selected.tipo}</div>
+              <div><strong>Objeto:</strong> {selected.objeto}</div>
+              <div><strong>Status:</strong> {selected.status}</div>
+              <div><strong>Vigência:</strong> {selected.vigencia}</div>
+              <div><strong>Valor:</strong> {selected.valor}</div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

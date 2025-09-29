@@ -155,23 +155,32 @@ class ApiService {
   }
 
   async getProfile(): Promise<ApiResponse<User>> {
-    return this.request<User>('/auth/profile');
+    // Sem chamada ao backend por enquanto
+    const userStr = localStorage.getItem('protectus-user');
+    if (userStr) {
+      return { success: true, data: JSON.parse(userStr) } as ApiResponse<User>;
+    }
+    return { success: false, error: 'Sem usuário em cache' };
   }
 
   async logout(): Promise<ApiResponse> {
-    const response = await this.request('/auth/logout', {
-      method: 'POST',
-    });
+    // Sem chamada ao backend
     this.clearToken();
-    return response;
+    return { success: true };
   }
 
-  // Apólices
+  // Apólices — protegidas por flag para evitar chamadas a rotas inexistentes.
+  private policiesApiEnabled() {
+    return (import.meta as any).env?.VITE_POLICIES_API === 'true';
+  }
+
   async getPolicies(): Promise<ApiResponse<any[]>> {
+    if (!this.policiesApiEnabled()) return { success: true, data: [] };
     return this.request<any[]>('/policies');
   }
 
   async createPolicy(policyData: any): Promise<ApiResponse<any>> {
+    if (!this.policiesApiEnabled()) return { success: false, error: 'Policies API disabled' };
     return this.request<any>('/policies', {
       method: 'POST',
       body: JSON.stringify(policyData),
@@ -179,6 +188,7 @@ class ApiService {
   }
 
   async updatePolicy(id: string, policyData: any): Promise<ApiResponse<any>> {
+    if (!this.policiesApiEnabled()) return { success: false, error: 'Policies API disabled' };
     return this.request<any>(`/policies/${id}`, {
       method: 'PUT',
       body: JSON.stringify(policyData),
@@ -186,9 +196,31 @@ class ApiService {
   }
 
   async deletePolicy(id: string): Promise<ApiResponse> {
+    if (!this.policiesApiEnabled()) return { success: false, error: 'Policies API disabled' } as ApiResponse;
     return this.request(`/policies/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  async downloadPolicyPdf(id: string): Promise<Blob | null> {
+    if (!this.policiesApiEnabled()) return null;
+    try {
+      const url = `${this.baseURL}/policies/${id}/pdf`;
+      const resp = await fetch(url, {
+        method: 'GET',
+        headers: {
+          ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+        },
+      });
+      if (!resp.ok) return null;
+      const blob = await resp.blob();
+      if (blob && (resp.headers.get('content-type')?.includes('pdf') || blob.size > 0)) {
+        return blob;
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   // Propostas

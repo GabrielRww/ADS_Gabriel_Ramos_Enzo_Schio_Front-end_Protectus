@@ -44,6 +44,7 @@ export const useAuthStore = create<AuthState>()(
           if (response.success && response.data) {
             const { user, token } = response.data;
             if (token) apiService.setToken(token);
+            try { localStorage.setItem('protectus-user', JSON.stringify(user)); } catch {}
             set({ 
               user, 
               isAuthenticated: true, 
@@ -68,21 +69,15 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        set({ isLoading: true });
-        
-        try {
-          await apiService.logout();
-        } catch (error) {
-          console.error('Erro ao fazer logout:', error);
-        } finally {
-          apiService.clearToken();
-          set({ 
-            user: null, 
-            isAuthenticated: false, 
-            isLoading: false,
-            error: null 
-          });
-        }
+        // Logout local — sem chamadas ao backend
+        apiService.clearToken();
+        try { localStorage.removeItem('protectus-user'); } catch {}
+        set({ 
+          user: null, 
+          isAuthenticated: false, 
+          isLoading: false,
+          error: null 
+        });
       },
 
       register: async (userData: RegisterData) => {
@@ -94,6 +89,7 @@ export const useAuthStore = create<AuthState>()(
           if (response.success && response.data) {
             const { user, token } = response.data;
             apiService.setToken(token);
+            try { localStorage.setItem('protectus-user', JSON.stringify(user)); } catch {}
             set({ 
               user, 
               isAuthenticated: true, 
@@ -122,44 +118,13 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuth: async () => {
+        // Sem request ao backend. Confia no estado persistido/local.
         const token = localStorage.getItem('protectus-token');
-        
-        if (!token) {
-          set({ isAuthenticated: false, user: null });
-          return;
-        }
-
-        set({ isLoading: true });
-        
-        try {
+        if (token) {
           apiService.setToken(token);
-          const response = await apiService.getProfile();
-          
-          if (response.success && response.data) {
-            set({ 
-              user: response.data, 
-              isAuthenticated: true, 
-              isLoading: false,
-              error: null 
-            });
-          } else {
-            apiService.clearToken();
-            set({ 
-              user: null, 
-              isAuthenticated: false, 
-              isLoading: false,
-              error: null 
-            });
-          }
-        } catch (error) {
-          apiService.clearToken();
-          set({ 
-            user: null, 
-            isAuthenticated: false, 
-            isLoading: false,
-            error: null 
-          });
         }
+        const current = get().user;
+        set({ isAuthenticated: !!current, isLoading: false });
       }
     }),
     {

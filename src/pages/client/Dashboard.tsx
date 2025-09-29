@@ -4,44 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Shield, Car, Home, Smartphone, Plus, FileText, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
+import { usePolicies } from '@/hooks/usePolicies';
 
 export default function ClientDashboard() {
   const { user } = useAuthStore();
-  
-  // Dados ilustrativos apenas para o usuário João
-  const isJoaoUser = user?.email === 'joao@email.com';
-  
-  const mockPolicies = isJoaoUser ? [
-    {
-      id: '1',
-      type: 'auto',
-      title: 'Seguro Auto - Honda Civic',
-      subtitle: 'ABC-1234',
-      icon: Car,
-      status: 'Ativo',
-      expiryDate: '23/05/2025'
-    },
-    {
-      id: '2',
-      type: 'residencial',
-      title: 'Seguro Residencial',
-      subtitle: 'Rua das Flores, 123',
-      icon: Home,
-      status: 'Ativo',
-      expiryDate: '15/08/2025'
-    }
-  ] : [];
-
-  const mockProposals = isJoaoUser ? [
-    {
-      id: '1',
-      title: 'Seguro Celular - iPhone 14',
-      subtitle: 'Proposta #12345',
-      icon: Smartphone,
-      status: 'Em Análise',
-      date: '10/12/2024'
-    }
-  ] : [];
+  const { policies, stats } = usePolicies();
 
   return (
     <div className="space-y-6">
@@ -92,24 +59,25 @@ export default function ClientDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {mockPolicies.length > 0 ? (
+          {policies.filter(p => p.status === 'Ativo').length > 0 ? (
             <div className="space-y-4">
-              {mockPolicies.map((policy) => {
-                const IconComponent = policy.icon;
+              {policies.filter(p => p.status === 'Ativo').map((p) => {
+                const Icon = p.tipo === 'Veículo' ? Car : p.tipo === 'Residencial' ? Home : Smartphone;
                 return (
-                  <div key={policy.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div key={p.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-success-light rounded-lg flex items-center justify-center">
-                        <IconComponent className="h-5 w-5 text-success" />
+                        <Icon className="h-5 w-5 text-success" />
                       </div>
                       <div>
-                        <h3 className="font-medium">{policy.title}</h3>
-                        <p className="text-sm text-muted-foreground">{policy.subtitle}</p>
+                        <h3 className="font-medium">{p.tipo}</h3>
+                        <p className="text-sm text-muted-foreground">{p.objeto}</p>
+                        <p className="text-xs text-muted-foreground">Vigência: {p.vigencia}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <Badge className="bg-success-light text-success">{policy.status}</Badge>
-                      <p className="text-sm text-muted-foreground mt-1">Vence em {policy.expiryDate}</p>
+                      <Badge className="bg-success-light text-success">{p.status}</Badge>
+                      <p className="text-sm text-muted-foreground mt-1">{p.valor}</p>
                     </div>
                   </div>
                 );
@@ -127,7 +95,7 @@ export default function ClientDashboard() {
         </CardContent>
       </Card>
 
-      {/* Recent Proposals */}
+      {/* Recent Proposals (placeholder) */}
       <Card>
         <CardHeader>
           <CardTitle>Propostas Recentes</CardTitle>
@@ -136,30 +104,9 @@ export default function ClientDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {mockProposals.length > 0 ? (
+          {false ? (
             <div className="space-y-4">
-              {mockProposals.map((proposal) => {
-                const IconComponent = proposal.icon;
-                return (
-                  <div key={proposal.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-warning-light rounded-lg flex items-center justify-center">
-                        <IconComponent className="h-5 w-5 text-warning" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium">{proposal.title}</h3>
-                        <p className="text-sm text-muted-foreground">{proposal.subtitle}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant="outline" className="border-warning text-warning">
-                        {proposal.status}
-                      </Badge>
-                      <p className="text-sm text-muted-foreground mt-1">Enviada em {proposal.date}</p>
-                    </div>
-                  </div>
-                );
-              })}
+              {/* Implementar quando houver endpoint real de propostas */}
             </div>
           ) : (
             <div className="text-center py-8">
@@ -180,7 +127,7 @@ export default function ClientDashboard() {
             <div className="flex items-center space-x-2">
               <Shield className="h-8 w-8 text-primary" />
               <div>
-                <p className="text-2xl font-bold">{mockPolicies.length}</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
                 <p className="text-sm text-muted-foreground">Apólices Ativas</p>
               </div>
             </div>
@@ -192,8 +139,8 @@ export default function ClientDashboard() {
             <div className="flex items-center space-x-2">
               <FileText className="h-8 w-8 text-accent" />
               <div>
-                <p className="text-2xl font-bold">{mockProposals.length}</p>
-                <p className="text-sm text-muted-foreground">Proposta{mockProposals.length !== 1 ? 's' : ''} Pendente{mockProposals.length !== 1 ? 's' : ''}</p>
+                <p className="text-2xl font-bold">{stats.pendentes}</p>
+                <p className="text-sm text-muted-foreground">Propostas Pendentes</p>
               </div>
             </div>
           </CardContent>
@@ -204,8 +151,8 @@ export default function ClientDashboard() {
             <div className="flex items-center space-x-2">
               <MapPin className="h-8 w-8 text-success" />
               <div>
-                <p className="text-2xl font-bold">{isJoaoUser ? 1 : 0}</p>
-                <p className="text-sm text-muted-foreground">Rastreador{isJoaoUser ? ' Ativo' : 'es Ativos'}</p>
+                <p className="text-2xl font-bold">{stats.ativas}</p>
+                <p className="text-sm text-muted-foreground">Ativas</p>
               </div>
             </div>
           </CardContent>
