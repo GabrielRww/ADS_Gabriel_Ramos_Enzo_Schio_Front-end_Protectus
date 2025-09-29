@@ -1,87 +1,173 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { apiService, type User } from '@/lib/api';
 
 export type UserRole = 'cliente' | 'funcionario';
 
-export interface User {
-  id: string;
+export interface RegisterData {
   name: string;
   email: string;
+  password: string;
+  phone: string;
+  cpf: string;
+  cep: string;
+  address: string;
   role: UserRole;
-  avatar?: string;
 }
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  register: (name: string, email: string, password: string, role: UserRole) => Promise<boolean>;
+  logout: () => Promise<void>;
+  register: (userData: RegisterData) => Promise<boolean>;
+  clearError: () => void;
+  checkAuth: () => Promise<void>;
 }
-
-// Mock users database
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'João Silva',
-    email: 'joao@email.com',
-    role: 'cliente'
-  },
-  {
-    id: '2',
-    name: 'Maria Santos',
-    email: 'maria@protectus.com',
-    role: 'funcionario'
-  }
-];
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
+      isLoading: false,
+      error: null,
 
       login: async (email: string, password: string) => {
-        // Mock login validation
-        const user = mockUsers.find(u => u.email === email);
+        set({ isLoading: true, error: null });
         
-        if (user && password === '123456') {
-          set({ user, isAuthenticated: true });
-          return true;
+        try {
+          const response = await apiService.login({ email, password });
+          
+          if (response.success && response.data) {
+            const { user, token } = response.data;
+            if (token) apiService.setToken(token);
+            set({ 
+              user, 
+              isAuthenticated: true, 
+              isLoading: false,
+              error: null 
+            });
+            return true;
+          } else {
+            set({ 
+              error: response.error || 'Erro no login', 
+              isLoading: false 
+            });
+            return false;
+          }
+        } catch (error) {
+          set({ 
+            error: 'Erro de conexão com o servidor', 
+            isLoading: false 
+          });
+          return false;
         }
-        
-        return false;
       },
 
-      logout: () => {
-        set({ user: null, isAuthenticated: false });
+      logout: async () => {
+        set({ isLoading: true });
+        
+        try {
+          await apiService.logout();
+        } catch (error) {
+          console.error('Erro ao fazer logout:', error);
+        } finally {
+          apiService.clearToken();
+          set({ 
+            user: null, 
+            isAuthenticated: false, 
+            isLoading: false,
+            error: null 
+          });
+        }
       },
 
-      register: async (name: string, email: string, password: string, role: UserRole) => {
-        // Verificar se o email já existe
-        const existingUser = mockUsers.find(u => u.email === email);
-        if (existingUser) {
-          return false; // Email já existe
+      register: async (userData: RegisterData) => {
+        set({ isLoading: true, error: null });
+        
+        try {
+          const response = await apiService.register(userData);
+          
+          if (response.success && response.data) {
+            const { user, token } = response.data;
+            apiService.setToken(token);
+            set({ 
+              user, 
+              isAuthenticated: true, 
+              isLoading: false,
+              error: null 
+            });
+            return true;
+          } else {
+            set({ 
+              error: response.error || 'Erro no cadastro', 
+              isLoading: false 
+            });
+            return false;
+          }
+        } catch (error) {
+          set({ 
+            error: 'Erro de conexão com o servidor', 
+            isLoading: false 
+          });
+          return false;
+        }
+      },
+
+      clearError: () => {
+        set({ error: null });
+      },
+
+      checkAuth: async () => {
+        const token = localStorage.getItem('protectus-token');
+        
+        if (!token) {
+          set({ isAuthenticated: false, user: null });
+          return;
         }
 
-        // Criar novo usuário com dados únicos
-        const newUser: User = {
-          id: Date.now().toString(),
-          name,
-          email,
-          role
-        };
+        set({ isLoading: true });
         
-        // Adicionar à lista de usuários mock
-        mockUsers.push(newUser);
-        
-        // Limpar qualquer estado anterior e definir o novo usuário
-        set({ user: newUser, isAuthenticated: true });
-        return true;
+        try {
+          apiService.setToken(token);
+          const response = await apiService.getProfile();
+          
+          if (response.success && response.data) {
+            set({ 
+              user: response.data, 
+              isAuthenticated: true, 
+              isLoading: false,
+              error: null 
+            });
+          } else {
+            apiService.clearToken();
+            set({ 
+              user: null, 
+              isAuthenticated: false, 
+              isLoading: false,
+              error: null 
+            });
+          }
+        } catch (error) {
+          apiService.clearToken();
+          set({ 
+            user: null, 
+            isAuthenticated: false, 
+            isLoading: false,
+            error: null 
+          });
+        }
       }
     }),
     {
-      name: 'protectus-auth'
+      name: 'protectus-auth',
+      partialize: (state) => ({ 
+        user: state.user, 
+        isAuthenticated: state.isAuthenticated 
+      })
     }
   )
 );

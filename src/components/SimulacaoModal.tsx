@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useSimulation } from '../hooks/useApi';
 import { ChevronLeft, ChevronRight, Mail, User, FileText, Car, Home, Smartphone } from 'lucide-react';
 
 interface SimulacaoModalProps {
@@ -35,6 +36,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro }: Simul
     cpf: '',
   });
   const { toast } = useToast();
+  const { simulate, loading: simulationLoading } = useSimulation();
 
   const totalSteps = 3;
   const progress = (currentStep / totalSteps) * 100;
@@ -56,14 +58,25 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro }: Simul
   };
 
   const handleSubmit = async () => {
-    // Simular envio de email
     try {
-      console.log('Dados enviados:', { tipoSeguro, ...formData });
+      const simulationData = {
+        type: tipoSeguro,
+        ...formData
+      };
+
+      const result = await simulate(simulationData);
       
-      toast({
-        title: "Simulação enviada com sucesso!",
-        description: "Em breve entraremos em contato para análise da sua proposta.",
-      });
+      if (result) {
+        toast({
+          title: "Simulação realizada com sucesso!",
+          description: `Valor estimado: R$ ${result.value || 'A calcular'}`,
+        });
+      } else {
+        toast({
+          title: "Simulação enviada!",
+          description: "Em breve entraremos em contato para análise da sua proposta.",
+        });
+      }
       
       // Reset form and close modal
       setCurrentStep(1);

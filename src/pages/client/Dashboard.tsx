@@ -8,8 +8,10 @@ import { useAuthStore } from '@/store/authStore';
 export default function ClientDashboard() {
   const { user } = useAuthStore();
   
-  // Dados mock para todos os usuários
-  const mockPolicies = [
+  // Dados ilustrativos apenas para o usuário João
+  const isJoaoUser = user?.email === 'joao@email.com';
+  
+  const mockPolicies = isJoaoUser ? [
     {
       id: '1',
       type: 'auto',
@@ -28,9 +30,9 @@ export default function ClientDashboard() {
       status: 'Ativo',
       expiryDate: '15/08/2025'
     }
-  ];
+  ] : [];
 
-  const mockProposals = [
+  const mockProposals = isJoaoUser ? [
     {
       id: '1',
       title: 'Seguro Celular - iPhone 14',
@@ -39,7 +41,7 @@ export default function ClientDashboard() {
       status: 'Em Análise',
       date: '10/12/2024'
     }
-  ];
+  ] : [];
 
   return (
     <div className="space-y-6">
@@ -202,8 +204,8 @@ export default function ClientDashboard() {
             <div className="flex items-center space-x-2">
               <MapPin className="h-8 w-8 text-success" />
               <div>
-                <p className="text-2xl font-bold">1</p>
-                <p className="text-sm text-muted-foreground">Rastreador Ativo</p>
+                <p className="text-2xl font-bold">{isJoaoUser ? 1 : 0}</p>
+                <p className="text-sm text-muted-foreground">Rastreador{isJoaoUser ? ' Ativo' : 'es Ativos'}</p>
               </div>
             </div>
           </CardContent>

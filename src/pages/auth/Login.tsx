@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Shield, Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useMutation } from '@tanstack/react-query';
-import { loginCliente } from '@/service';
+import { useAuthStore } from '@/store/authStore';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -18,35 +17,37 @@ export default function Login() {
   const { theme, setTheme } = useTheme();
   
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const { login, isLoading: authLoading, error } = useAuthStore();
 
-
-  const loginMutation = useMutation({
-    mutationFn: () => loginCliente({
-      email, senha: password
-    }),
-    mutationKey: ['loginCliente'],
-    onSuccess: () => {
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo à Protectus Seguros."
-      });
-      setIsLoading(false);
-      navigate('/dashboard')
-    },
-    onError: () => {
-             toast({
-          variant: "destructive",
-          title: "Erro no login",
-          description: "Email ou senha incorretos."
-        });
-    }
-  });
+  const from = location.state?.from?.pathname || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    loginMutation.mutate();
+
+    const success = await login(email, password);
+    
+      if (success) {
+        // Redireciona baseado na role do usuário logado
+        const loggedUser = useAuthStore.getState().user;
+        const redirectPath = loggedUser?.role === 'funcionario' ? '/admin' : '/dashboard';
+      toast({
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo à Protectus Seguros."
+      });
+        navigate(redirectPath, { replace: true });
+    } else {
+      const { error } = useAuthStore.getState();
+      toast({
+        variant: "destructive",
+        title: "Erro no login",
+        description: error || "Email ou senha incorretos."
+      });
+    }
+
+    setIsLoading(false);
   };
 
   return (
@@ -127,12 +128,11 @@ export default function Login() {
               </div>
 
               <Button 
-                type="button" 
+                type="submit" 
                 className="w-full bg-gradient-primary hover:bg-primary-hover"
-                onClick={() => loginMutation.mutate()}
-                disabled={isLoading}
+                disabled={isLoading || authLoading}
               >
-                {isLoading ? 'Entrando...' : 'Entrar'}
+                {(isLoading || authLoading) ? 'Entrando...' : 'Entrar'}
               </Button>
             </form>
 

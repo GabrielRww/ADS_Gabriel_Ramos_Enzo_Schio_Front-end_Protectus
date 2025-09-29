@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { createCliente } from '@/service';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Shield, Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -9,10 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-// import { useAuthStore, UserRole } from '@/store/authStore';
+import { useAuthStore, UserRole, type RegisterData } from '@/store/authStore';
 
 export default function Register() {
-
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -21,20 +19,19 @@ export default function Register() {
   const [address, setAddress] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const role = 'cliente'; // Sempre cliente por padrão
+  const role: UserRole = 'cliente'; // Sempre cliente por padrão
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { theme, setTheme } = useTheme();
-
+  
   const navigate = useNavigate();
   const { toast } = useToast();
-
-
+  const { register, isLoading: authLoading, error } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (password !== confirmPassword) {
       toast({
         variant: "destructive",
@@ -55,39 +52,35 @@ export default function Register() {
 
     setIsLoading(true);
 
-    try {
-        await createCliente({
-          des_usuario: name,
-          nome: name,
-          email: email,
-          telefone: phone.replace(/\D/g, ''),
-          cpf: cpf.replace(/\D/g, ''),
-          cep: cep.replace(/\D/g, ''),
-          endereco: address,
-          bairro: 'Centro',
-          cidade: 'Cidade Exemplo',
-          estado: 'SP',
-          senha: password,
-          role: role
-        });
+    const userData: RegisterData = {
+      name,
+      email,
+      password,
+      phone,
+      cpf,
+      cep,
+      address,
+      role
+    };
+
+    const success = await register(userData);
+    
+    if (success) {
       toast({
         title: "Cadastro realizado com sucesso!",
         description: "Bem-vindo à Protectus Seguros."
       });
       navigate('/dashboard');
-    } catch (error: any) {
-      let backendMsg = error?.response?.data?.message || error?.response?.data?.error || error.message;
-      if (backendMsg && typeof backendMsg === 'object') {
-        backendMsg = JSON.stringify(backendMsg);
-      }
+    } else {
+      const { error } = useAuthStore.getState();
       toast({
         variant: "destructive",
-        title: "Erro ao cadastrar",
-        description: backendMsg || "Ocorreu um erro. Tente novamente."
+        title: "Erro no cadastro",
+        description: error || "Ocorreu um erro. Tente novamente."
       });
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   return (
@@ -261,9 +254,9 @@ export default function Register() {
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-primary hover:bg-primary-hover"
-                disabled={isLoading}
+                disabled={isLoading || authLoading}
               >
-                {isLoading ? 'Cadastrando...' : 'Cadastrar'}
+                {(isLoading || authLoading) ? 'Cadastrando...' : 'Cadastrar'}
               </Button>
             </form>
 

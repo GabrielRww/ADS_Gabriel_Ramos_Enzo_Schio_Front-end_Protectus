@@ -7,7 +7,7 @@ import { ThemeProvider } from "next-themes";
 
 // Layout components
 import { Header } from "@/components/layout/Header";
-import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import ProtectedRoute from "@/components/layout/ProtectedRoute";
 
 // Pages
 import Landing from "@/pages/Landing";
@@ -28,11 +28,29 @@ import { AdminProfile } from "@/pages/admin/Profile";
 
 import { useAuthStore } from "@/store/authStore";
 import NotFound from "./pages/NotFound";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 function AppContent() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, checkAuth, isLoading } = useAuthStore();
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

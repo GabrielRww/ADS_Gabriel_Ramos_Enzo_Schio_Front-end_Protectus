@@ -1,25 +1,39 @@
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '@/store/authStore';
-import { UserRole } from '@/store/authStore';
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuthStore } from "@/store/authStore";
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  allowedRoles?: UserRole[];
+type Role = "cliente" | "funcionario";
+
+function homeByRole(role?: Role) {
+  return role === "funcionario" ? "/admin" : "/dashboard";
 }
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { isAuthenticated, user } = useAuthStore();
+/**
+ * Protege rotas por autenticação e (opcionalmente) por role.
+ * - Se não autenticado: manda para /login e salva "from" para redirect após login.
+ * - Se autenticado mas sem role permitida: redireciona para a home pela role do usuário.
+ */
+export default function ProtectedRoute({
+  children,
+  allowedRoles,
+}: {
+  children: JSX.Element;
+  allowedRoles?: Role[];
+}) {
   const location = useLocation();
+  const { isAuthenticated, user } = useAuthStore();
 
+  // 1) precisa estar autenticado
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    // Redirect to appropriate dashboard based on role
-    const redirectPath = user.role === 'funcionario' ? '/admin' : '/dashboard';
-    return <Navigate to={redirectPath} replace />;
+  // 2) checa role (se foi especificada)
+  if (allowedRoles && allowedRoles.length > 0) {
+    const ok = allowedRoles.includes(user?.role as Role);
+    if (!ok) {
+      return <Navigate to={homeByRole(user?.role as Role)} replace />;
+    }
   }
 
-  return <>{children}</>;
+  return children;
 }

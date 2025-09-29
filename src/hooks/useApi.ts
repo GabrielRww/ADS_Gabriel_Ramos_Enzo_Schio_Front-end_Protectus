@@ -1,0 +1,33 @@
+import { useState, useCallback } from 'react';
+import { apiService } from '@/lib/api';
+
+interface SimulationResult {
+  value?: number | string;
+  [key: string]: any;
+}
+
+export function useSimulation() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const simulate = useCallback(async (payload: any): Promise<SimulationResult | null> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await apiService.simulateInsurance(payload);
+      if (resp.success) {
+        // resp.data pode conter o resultado; se não houver, retorne objeto vazio
+        return (resp.data as SimulationResult) ?? {};
+      }
+      setError(resp.error || 'Falha na simulação');
+      return null;
+    } catch (e: any) {
+      setError(e?.message || 'Erro inesperado');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { simulate, loading, error };
+}
