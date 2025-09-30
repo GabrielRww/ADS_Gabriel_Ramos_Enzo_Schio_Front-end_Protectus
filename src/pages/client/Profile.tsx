@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/store/authStore';
+import { apiService, type User } from '@/lib/api';
 import { Camera, Edit3, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -20,14 +21,40 @@ export function ClientProfile() {
     cpfCnpj: '123.456.789-00',
     address: 'Rua das Flores, 123 - São Paulo, SP'
   });
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(user?.avatar);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleSave = () => {
-    // Simulação de salvamento
-    toast({
-      title: "Perfil atualizado",
-      description: "Suas informações foram salvas com sucesso.",
-    });
-    setIsEditing(false);
+  const handleSave = async () => {
+    if (!user) return;
+    // Monta payload mínimo esperado pelo backend; limpa campos numéricos
+    const payload: Partial<User> & { telefone?: string; cpf?: string } = {
+      name: formData.name,
+      email: formData.email,
+      address: formData.address,
+      phone: formData.phone?.replace(/\D/g, ''),
+      cpf: formData.cpfCnpj?.replace(/\D/g, ''),
+      avatar: avatarUrl,
+    };
+
+    // Atualização local imediata para UX
+    const updated: User = { ...user, ...payload } as User;
+    try { localStorage.setItem('protectus-user', JSON.stringify(updated)); } catch {}
+    // Se existir backend habilitado, tenta enviar
+    const resp = await apiService.updateProfile(user.id, payload);
+    if (resp.success) {
+      // Se vier user do backend, usa ele; senão mantém o local
+      const finalUser = (resp.data as User) || updated;
+      try { localStorage.setItem('protectus-user', JSON.stringify(finalUser)); } catch {}
+      // atualiza store para refletir no header imediatamente
+      useAuthStore.setState({ user: finalUser });
+      toast({ title: 'Perfil atualizado', description: 'Suas informações foram salvas com sucesso.' });
+      setIsEditing(false);
+    } else {
+      // Mantém alteração local e avisa que ficou offline
+      useAuthStore.setState({ user: updated });
+      toast({ title: 'Alterações salvas localmente', description: 'Quando a API estiver disponível, faremos a sincronização.' });
+      setIsEditing(false);
+    }
   };
 
   const handleCancel = () => {
@@ -38,7 +65,31 @@ export function ClientProfile() {
       cpfCnpj: '123.456.789-00',
       address: 'Rua das Flores, 123 - São Paulo, SP'
     });
+    setAvatarUrl(user?.avatar);
     setIsEditing(false);
+  };
+
+  const onPickAvatar = () => fileInputRef.current?.click();
+
+  const onAvatarChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    // Pré-visualização imediata
+    const preview = URL.createObjectURL(file);
+    setAvatarUrl(preview);
+    // Upload opcionalmente no backend
+    const resp = await apiService.uploadAvatar(user.id, file);
+    if (resp.success && resp.data?.url) {
+      setAvatarUrl(resp.data.url);
+      const updated = { ...(user as any), avatar: resp.data.url } as User;
+      try { localStorage.setItem('protectus-user', JSON.stringify(updated)); } catch {}
+      useAuthStore.setState({ user: updated });
+      toast({ title: 'Foto atualizada', description: 'Sua foto de perfil foi alterada.' });
+    } else {
+      const updated = { ...(user as any), avatar: preview } as User;
+      useAuthStore.setState({ user: updated });
+      toast({ title: 'Foto atualizada localmente', description: 'Ao habilitar a API de perfil, faremos o envio.' });
+    }
   };
 
   return (
@@ -80,7 +131,7 @@ export function ClientProfile() {
           <CardContent className="flex flex-col items-center space-y-4">
             <div className="relative">
               <Avatar className="h-32 w-32">
-                <AvatarImage src={user?.avatar} />
+                <AvatarImage src={avatarUrl} />
                 <AvatarFallback className="text-2xl">
                   {user?.name?.split(' ').map(n => n[0]).join('')}
                 </AvatarFallback>
@@ -90,15 +141,19 @@ export function ClientProfile() {
                   size="sm"
                   className="absolute bottom-0 right-0 rounded-full h-8 w-8 p-0"
                   variant="secondary"
+                  onClick={onPickAvatar}
                 >
                   <Camera className="h-4 w-4" />
                 </Button>
               )}
             </div>
             {isEditing && (
-              <Button variant="outline" size="sm">
-                Alterar Foto
-              </Button>
+              <>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onAvatarChange} />
+                <Button variant="outline" size="sm" onClick={onPickAvatar}>
+                  Alterar Foto
+                </Button>
+              </>
             )}
           </CardContent>
         </Card>

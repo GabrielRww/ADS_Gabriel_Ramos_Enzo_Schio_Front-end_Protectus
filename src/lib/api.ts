@@ -169,6 +169,56 @@ class ApiService {
     return { success: true };
   }
 
+  // ===== Perfil do usuário (opcionalmente no backend) =====
+  private profileApiEnabled() {
+    return (import.meta as any).env?.VITE_PROFILE_API === 'true';
+  }
+
+  async updateProfile(userId: string, data: Partial<User>): Promise<ApiResponse<User>> {
+    // Quando desabilitado, não faz rede; apenas retorna sucesso para fluxo local
+    if (!this.profileApiEnabled()) {
+      return { success: true, data: { ...(data as any), id: userId } as User };
+    }
+    const path = ((import.meta as any).env?.VITE_PROFILE_UPDATE_PATH as string) || '/users/cliente';
+    // Heurística: PATCH em path; se precisar id no caminho, suporta token {id}
+    const endpoint = path.includes('{id}') ? path.replace('{id}', encodeURIComponent(userId)) : path;
+    return this.request<User>(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async uploadAvatar(userId: string, file: File | Blob): Promise<ApiResponse<{ url: string }>> {
+    if (!this.profileApiEnabled()) {
+      // Sem backend: devolve URL local (object URL) apenas para UX temporária
+      const url = URL.createObjectURL(file);
+      return { success: true, data: { url } };
+    }
+    const path = ((import.meta as any).env?.VITE_AVATAR_UPLOAD_PATH as string) || '/users/avatar';
+    const endpoint = path.includes('{id}') ? path.replace('{id}', encodeURIComponent(userId)) : path;
+
+    const form = new FormData();
+    form.append('avatar', file);
+    try {
+      const resp = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+          // Não definir Content-Type manualmente para FormData
+        } as any,
+        body: form,
+      });
+      if (!resp.ok) {
+        return { success: false, error: `HTTP ${resp.status}: ${resp.statusText}` };
+      }
+      const data = await resp.json().catch(() => ({}));
+      const url = (data?.url || data?.avatarUrl || data?.avatar || '') as string;
+      return { success: true, data: { url } };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Falha no upload' };
+    }
+  }
+
   // Apólices — protegidas por flag para evitar chamadas a rotas inexistentes.
   private policiesApiEnabled() {
     return (import.meta as any).env?.VITE_POLICIES_API === 'true';
