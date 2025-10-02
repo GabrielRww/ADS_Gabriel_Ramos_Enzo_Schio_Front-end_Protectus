@@ -400,24 +400,7 @@ class ApiService {
     });
   }
 
-  // Incidentes
-  async getIncidents(): Promise<ApiResponse<any[]>> {
-    return this.request<any[]>('/incidents');
-  }
-
-  async createIncident(incidentData: any): Promise<ApiResponse<any>> {
-    return this.request<any>('/incidents', {
-      method: 'POST',
-      body: JSON.stringify(incidentData),
-    });
-  }
-
-  async updateIncident(id: string, incidentData: any): Promise<ApiResponse<any>> {
-    return this.request<any>(`/incidents/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(incidentData),
-    });
-  }
+  // Incidentes — removidos do app atual por não serem usados
 
   // Simulação de seguro
   async simulateInsurance(simulationData: any): Promise<ApiResponse<any>> {

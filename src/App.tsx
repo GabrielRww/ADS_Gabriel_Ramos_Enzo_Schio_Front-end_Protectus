@@ -23,7 +23,6 @@ import AdminDashboard from "@/pages/admin/Dashboard";
 import AdminClientes from "@/pages/admin/Clientes";
 import AdminPropostas from "@/pages/admin/Propostas";
 import AdminRastreadores from "@/pages/admin/Rastreadores";
-import AdminIncidentes from "@/pages/admin/Incidentes";
 import { AdminProfile } from "@/pages/admin/Profile";
 
 import { useAuthStore } from "@/store/authStore";
@@ -68,6 +67,8 @@ function AppContent() {
       <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Routes>
+          {/* Evita 404 quando navegando para /login após autenticação */}
+          <Route path="/login" element={<Navigate to={user?.role === 'gerente' ? '/admin' : '/dashboard'} replace />} />
           {/* Client Routes */}
           <Route 
             path="/dashboard" 
@@ -132,14 +133,6 @@ function AppContent() {
             element={
               <ProtectedRoute allowedRoles={['gerente']}>
                 <AdminRastreadores />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/admin/incidentes" 
-            element={
-              <ProtectedRoute allowedRoles={['gerente']}>
-                <AdminIncidentes />
               </ProtectedRoute>
             } 
           />

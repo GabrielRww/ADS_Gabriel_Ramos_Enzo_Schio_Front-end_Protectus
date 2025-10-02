@@ -214,7 +214,6 @@ export function AdminProfile() {
                     <li>• Gestão de Clientes</li>
                     <li>• Análise de Propostas</li>
                     <li>• Controle de Rastreadores</li>
-                    <li>• Gestão de Incidentes</li>
                   </ul>
                 </div>
                 <div className="space-y-2">

@@ -1,20 +1,7 @@
 import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
 
 const NotFound = () => {
   const location = useLocation();
-
-  useEffect(() => {
-    // Evita poluir o console com 404 de rotas esperadas (ex.: /login quando já autenticado)
-    if (location.pathname === '/login') {
-      console.warn('404 (benigno): redirecionamento esperado para /login');
-      return;
-    }
-    console.warn(
-      '404: rota não encontrada',
-      location.pathname
-    );
-  }, [location.pathname]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">

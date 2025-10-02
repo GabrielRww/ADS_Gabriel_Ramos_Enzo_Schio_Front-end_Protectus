@@ -51,8 +51,7 @@ export function Header() {
     { name: 'Dashboard', href: '/admin' },
     { name: 'Clientes', href: '/admin/clientes' },
     { name: 'Propostas', href: '/admin/propostas' },
-    { name: 'Rastreadores', href: '/admin/rastreadores' },
-    { name: 'Incidentes', href: '/admin/incidentes' }
+    { name: 'Rastreadores', href: '/admin/rastreadores' }
   ];
 
   const navigation = user?.role === 'gerente' ? employeeNavigation : clientNavigation;
