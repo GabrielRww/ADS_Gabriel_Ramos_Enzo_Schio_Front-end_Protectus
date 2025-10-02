@@ -317,27 +317,66 @@ class ApiService {
     return this.request<User[]>('/clients');
   }
 
-  // Funcionários
-  async getFuncionarios(): Promise<ApiResponse<any[]>> {
-    return this.request<any[]>('/funcionarios');
+  // Funcionários (rotas: /users/funcionario; GET via params; POST/PUT via body)
+  private buildQuery(params?: Record<string, any>) {
+    if (!params) return '';
+    const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '');
+    if (!entries.length) return '';
+    const qs = entries
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+      .join('&');
+    return `?${qs}`;
+  }
+
+  async getFuncionarios(params?: Record<string, any>): Promise<ApiResponse<any[]>> {
+    const qs = this.buildQuery(params);
+    return this.request<any[]>(`/users/funcionario${qs}`);
   }
 
   async createFuncionario(data: any): Promise<ApiResponse<any>> {
-    return this.request<any>('/funcionarios', {
+    // Mapeia nomes comuns; backend aceita body
+    const payload = {
+      ...data,
+      nome: data.nome ?? data.des_usuario ?? data.name,
+      des_usuario: data.des_usuario ?? data.nome ?? data.name,
+      email: data.email,
+      telefone: (data.telefone ?? data.phone ?? '').replace?.(/\D/g, '') ?? data.telefone,
+      cpf: (data.cpf ?? data.documento ?? '').replace?.(/\D/g, '') ?? data.cpf,
+      cidade: data.cidade ?? data.city,
+      estado: data.estado ?? data.uf,
+      senha: data.senha ?? data.password,
+      ind_gerente: Number(data.ind_gerente ?? 0),
+    };
+    return this.request<any>('/users/funcionario', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   }
 
-  async updateFuncionario(id: string | number, data: any): Promise<ApiResponse<any>> {
-    return this.request<any>(`/funcionarios/${id}`, {
+  async updateFuncionario(data: any): Promise<ApiResponse<any>> {
+    const payload = {
+      ...data,
+      nome: data.nome ?? data.des_usuario ?? data.name,
+      des_usuario: data.des_usuario ?? data.nome ?? data.name,
+      telefone: (data.telefone ?? data.phone ?? '').replace?.(/\D/g, '') ?? data.telefone,
+      cpf: (data.cpf ?? data.documento ?? '').replace?.(/\D/g, '') ?? data.cpf,
+      ind_gerente: Number(data.ind_gerente ?? 0),
+    };
+    return this.request<any>('/users/funcionario', {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   }
 
-  async deleteFuncionario(id: string | number): Promise<ApiResponse> {
-    return this.request(`/funcionarios/${id}`, { method: 'DELETE' });
+  async inativaFuncionario(data: any): Promise<ApiResponse<any>> {
+    const payload = {
+      cod_funcionario: data.cod_funcionario ?? data.id ?? data.cod,
+      ...data,
+    };
+    return this.request<any>('/users/inativa-funcionario', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
   }
 
   // Rastreadores

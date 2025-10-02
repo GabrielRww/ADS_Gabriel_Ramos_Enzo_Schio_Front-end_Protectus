@@ -98,7 +98,7 @@ export default function AdminClientes() {
     let mounted = true;
     (async () => {
       setIsLoading(true);
-      const resp = await apiService.getFuncionarios();
+  const resp = await apiService.getFuncionarios({ status: filterStatus === 'all' ? undefined : filterStatus, q: searchTerm });
       if (resp.success && Array.isArray(resp.data)) {
         const mapped = resp.data.map((f: any, idx: number) => ({
           id: f.id ?? f.cod_funcionario ?? `F${idx + 1}`,
@@ -156,7 +156,7 @@ export default function AdminClientes() {
         toast({ title: 'Funcionário adicionado!', description: 'Cadastro realizado com sucesso.' });
         setIsDialogOpen(false);
         // Recarrega lista
-        const list = await apiService.getFuncionarios();
+  const list = await apiService.getFuncionarios();
         if (list.success && Array.isArray(list.data)) {
           setFuncionarios(list.data.map((f: any, idx: number) => ({
             id: f.id ?? f.cod_funcionario ?? `F${idx + 1}`,
@@ -190,7 +190,8 @@ export default function AdminClientes() {
 
   const handleDeleteClient = async (clientId: string | number) => {
     try {
-      const resp = await apiService.deleteFuncionario(clientId);
+      // Preferir inativação se existir regra; caso contrário, apenas remove localmente
+      const resp = await apiService.inativaFuncionario({ cod_funcionario: clientId });
       if ((resp as any).success === false) throw new Error((resp as any).error || 'Erro');
       toast({ title: 'Funcionário removido!', description: 'Registro excluído.' });
       setFuncionarios((prev) => prev.filter((c) => String(c.id) !== String(clientId)));
