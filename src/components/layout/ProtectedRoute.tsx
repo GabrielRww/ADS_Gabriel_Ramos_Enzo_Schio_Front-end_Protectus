@@ -1,10 +1,11 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 
-type Role = "cliente" | "funcionario";
+type Role = "cliente" | "funcionario" | "gerente";
 
 function homeByRole(role?: Role) {
-  return role === "funcionario" ? "/admin" : "/dashboard";
+  if (role === "gerente") return "/admin";
+  return "/dashboard"; // cliente e funcionario comum
 }
 
 /**

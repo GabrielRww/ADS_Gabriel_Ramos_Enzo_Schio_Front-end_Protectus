@@ -102,11 +102,11 @@ function AppContent() {
             } 
           />
 
-          {/* Admin Routes */}
+          {/* Admin Routes (somente gerente) */}
           <Route 
             path="/admin" 
             element={
-              <ProtectedRoute allowedRoles={['funcionario']}>
+              <ProtectedRoute allowedRoles={['gerente']}>
                 <AdminDashboard />
               </ProtectedRoute>
             } 
@@ -114,7 +114,7 @@ function AppContent() {
           <Route 
             path="/admin/clientes" 
             element={
-              <ProtectedRoute allowedRoles={['funcionario']}>
+              <ProtectedRoute allowedRoles={['gerente']}>
                 <AdminClientes />
               </ProtectedRoute>
             } 
@@ -122,7 +122,7 @@ function AppContent() {
           <Route 
             path="/admin/propostas" 
             element={
-              <ProtectedRoute allowedRoles={['funcionario']}>
+              <ProtectedRoute allowedRoles={['gerente']}>
                 <AdminPropostas />
               </ProtectedRoute>
             } 
@@ -130,7 +130,7 @@ function AppContent() {
           <Route 
             path="/admin/rastreadores" 
             element={
-              <ProtectedRoute allowedRoles={['funcionario']}>
+              <ProtectedRoute allowedRoles={['gerente']}>
                 <AdminRastreadores />
               </ProtectedRoute>
             } 
@@ -138,7 +138,7 @@ function AppContent() {
           <Route 
             path="/admin/incidentes" 
             element={
-              <ProtectedRoute allowedRoles={['funcionario']}>
+              <ProtectedRoute allowedRoles={['gerente']}>
                 <AdminIncidentes />
               </ProtectedRoute>
             } 
@@ -146,7 +146,7 @@ function AppContent() {
           <Route 
             path="/admin/perfil" 
             element={
-              <ProtectedRoute allowedRoles={['funcionario']}>
+              <ProtectedRoute allowedRoles={['gerente']}>
                 <AdminProfile />
               </ProtectedRoute>
             } 
@@ -155,9 +155,7 @@ function AppContent() {
           {/* Default redirects based on role */}
           <Route 
             path="/" 
-            element={
-              <Navigate to={user?.role === 'funcionario' ? '/admin' : '/dashboard'} replace />
-            } 
+            element={<Navigate to={user?.role === 'gerente' ? '/admin' : '/dashboard'} replace />} 
           />
           
           {/* 404 */}

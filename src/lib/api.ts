@@ -20,14 +20,14 @@ export interface RegisterRequest {
   cpf: string;
   cep: string;
   address: string;
-  role: 'cliente' | 'funcionario';
+  role: 'cliente' | 'funcionario' | 'gerente';
 }
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'cliente' | 'funcionario';
+  role: 'cliente' | 'funcionario' | 'gerente';
   avatar?: string;
   phone?: string;
   cpf?: string;
@@ -109,11 +109,19 @@ class ApiService {
     const token = raw.access_token || raw.token;
     const rawUser = (raw.user as Partial<User>) || raw.data?.user || {};
     // Normaliza o usuário para garantir role e campos mínimos
+    const isManager =
+      (rawUser as any)?.ind_gerente === 1 ||
+      (rawUser as any)?.ind_gerente === '1' ||
+      (rawUser as any)?.gerente === true ||
+      String((rawUser as any)?.cargo || '').toLowerCase() === 'gerente';
+    const role: User['role'] = isManager
+      ? 'gerente'
+      : (((rawUser as any)?.role as any) === 'funcionario' ? 'funcionario' : 'cliente');
     const user: User = {
       id: (rawUser as any)?.id || (rawUser as any)?.cod_usuario || (rawUser as any)?.cod_cliente || credentials.email,
       name: (rawUser as any)?.name || (rawUser as any)?.nome || (rawUser as any)?.des_usuario || credentials.email.split('@')[0],
       email: (rawUser as any)?.email || credentials.email,
-      role: ((rawUser as any)?.role as User['role']) || 'cliente',
+      role,
     };
     return { success: true, data: { user, token } };
   }

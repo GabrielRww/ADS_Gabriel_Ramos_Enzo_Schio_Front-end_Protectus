@@ -55,7 +55,7 @@ export function Header() {
     { name: 'Incidentes', href: '/admin/incidentes' }
   ];
 
-  const navigation = user?.role === 'funcionario' ? employeeNavigation : clientNavigation;
+  const navigation = user?.role === 'gerente' ? employeeNavigation : clientNavigation;
 
   return (
     <header className="bg-card border-b border-border shadow-sm">
@@ -127,12 +127,12 @@ export function Header() {
                   <div className="font-medium">{user?.name}</div>
                   <div className="text-muted-foreground">{user?.email}</div>
                   <Badge variant="outline" className="mt-1 text-xs">
-                    {user?.role === 'funcionario' ? 'Funcionário' : 'Cliente'}
+                    {user?.role === 'gerente' ? 'Gerente' : user?.role === 'funcionario' ? 'Funcionário' : 'Cliente'}
                   </Badge>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to={user?.role === 'funcionario' ? '/admin/perfil' : '/perfil'} className="cursor-pointer">
+                  <Link to={user?.role === 'gerente' ? '/admin/perfil' : '/perfil'} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     Perfil
                   </Link>

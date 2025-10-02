@@ -31,8 +31,8 @@ export default function Login() {
     
       if (success) {
         // Redireciona baseado na role do usuário logado
-        const loggedUser = useAuthStore.getState().user;
-        const redirectPath = loggedUser?.role === 'funcionario' ? '/admin' : '/dashboard';
+  const loggedUser = useAuthStore.getState().user;
+  const redirectPath = loggedUser?.role === 'gerente' ? '/admin' : '/dashboard';
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo à Protectus Seguros."

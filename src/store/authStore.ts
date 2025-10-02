@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiService, type User } from '@/lib/api';
 
-export type UserRole = 'cliente' | 'funcionario';
+export type UserRole = 'cliente' | 'funcionario' | 'gerente';
 
 export interface RegisterData {
   name: string;
