@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +10,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Plus, Eye, Edit, Trash2, Phone, Mail, MapPin, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiService } from "@/lib/api";
 
 export default function AdminClientes() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [funcionarios, setFuncionarios] = useState<any[]>([]);
+  const [novo, setNovo] = useState({
+    nome: "",
+    email: "",
+    documento: "",
+    telefone: "",
+    cidade: "",
+    status: "ativo",
+    senha: "",
+    ind_gerente: 0,
+  });
 
   const clients = [
     {
@@ -80,13 +94,40 @@ export default function AdminClientes() {
     }
   ];
 
-  const filteredClients = clients.filter(client => {
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setIsLoading(true);
+      const resp = await apiService.getFuncionarios();
+      if (resp.success && Array.isArray(resp.data)) {
+        const mapped = resp.data.map((f: any, idx: number) => ({
+          id: f.id ?? f.cod_funcionario ?? `F${idx + 1}`,
+          name: f.nome ?? f.des_usuario ?? f.name ?? "—",
+          email: f.email,
+          phone: f.telefone ?? f.phone ?? "",
+          document: f.cpf ?? f.documento ?? "",
+          city: f.cidade ?? f.city ?? "",
+          status: (f.status ?? 'Ativo'),
+          policies: f.policies ?? 0,
+          createdAt: f.created_at ?? new Date().toISOString(),
+          lastActivity: f.updated_at ?? new Date().toISOString(),
+        }));
+        if (mounted) setFuncionarios(mapped);
+      } else {
+        if (mounted) setFuncionarios(clients);
+      }
+      if (mounted) setIsLoading(false);
+    })();
+    return () => { mounted = false };
+  }, []);
+
+  const filteredClients = useMemo(() => (funcionarios.length ? funcionarios : clients).filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          client.document.includes(searchTerm);
     const matchesStatus = filterStatus === "all" || client.status.toLowerCase() === filterStatus.toLowerCase();
     return matchesSearch && matchesStatus;
-  });
+  }), [funcionarios, searchTerm, filterStatus]);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -97,12 +138,47 @@ export default function AdminClientes() {
     }
   };
 
-  const handleAddClient = () => {
-    toast({
-      title: "Cliente adicionado!",
-      description: "Novo cliente foi cadastrado com sucesso.",
-    });
-    setIsDialogOpen(false);
+  const handleAddClient = async () => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        nome: novo.nome,
+        email: novo.email,
+        telefone: novo.telefone.replace(/\D/g, ''),
+        cpf: novo.documento.replace(/\D/g, ''),
+        cidade: novo.cidade,
+        status: novo.status,
+        senha: novo.senha,
+        ind_gerente: Number(novo.ind_gerente) || 0,
+      };
+      const resp = await apiService.createFuncionario(payload);
+      if (resp.success) {
+        toast({ title: 'Funcionário adicionado!', description: 'Cadastro realizado com sucesso.' });
+        setIsDialogOpen(false);
+        // Recarrega lista
+        const list = await apiService.getFuncionarios();
+        if (list.success && Array.isArray(list.data)) {
+          setFuncionarios(list.data.map((f: any, idx: number) => ({
+            id: f.id ?? f.cod_funcionario ?? `F${idx + 1}`,
+            name: f.nome ?? f.des_usuario ?? f.name ?? "—",
+            email: f.email,
+            phone: f.telefone ?? f.phone ?? "",
+            document: f.cpf ?? f.documento ?? "",
+            city: f.cidade ?? f.city ?? "",
+            status: (f.status ?? 'Ativo'),
+            policies: f.policies ?? 0,
+            createdAt: f.created_at ?? new Date().toISOString(),
+            lastActivity: f.updated_at ?? new Date().toISOString(),
+          })));
+        }
+      } else {
+        toast({ variant: 'destructive', title: 'Falha ao cadastrar', description: resp.error || 'Erro desconhecido' });
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro no cadastro', description: e?.message });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleEditClient = (clientId: string) => {
@@ -112,12 +188,15 @@ export default function AdminClientes() {
     });
   };
 
-  const handleDeleteClient = (clientId: string) => {
-    toast({
-      title: "Cliente removido!",
-      description: "Cliente foi removido do sistema.",
-      variant: "destructive"
-    });
+  const handleDeleteClient = async (clientId: string | number) => {
+    try {
+      const resp = await apiService.deleteFuncionario(clientId);
+      if ((resp as any).success === false) throw new Error((resp as any).error || 'Erro');
+      toast({ title: 'Funcionário removido!', description: 'Registro excluído.' });
+      setFuncionarios((prev) => prev.filter((c) => String(c.id) !== String(clientId)));
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro ao remover', description: e?.message });
+    }
   };
 
   return (
@@ -140,40 +219,38 @@ export default function AdminClientes() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Novo Cliente</DialogTitle>
-              <DialogDescription>
-                Cadastre um novo cliente no sistema
-              </DialogDescription>
+              <DialogTitle>Novo Funcionário</DialogTitle>
+              <DialogDescription>Cadastre um funcionário (marque gerente para acesso à área admin)</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome Completo</Label>
-                  <Input id="name" placeholder="João Silva" />
+                  <Input id="name" placeholder="João Silva" value={novo.nome} onChange={(e)=>setNovo({...novo, nome:e.target.value})} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="document">CPF/CNPJ</Label>
-                  <Input id="document" placeholder="123.456.789-00" />
+                  <Input id="document" placeholder="123.456.789-00" value={novo.documento} onChange={(e)=>setNovo({...novo, documento:e.target.value})} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" type="email" placeholder="joao@email.com" />
+                  <Input id="email" type="email" placeholder="joao@email.com" value={novo.email} onChange={(e)=>setNovo({...novo, email:e.target.value})} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>
-                  <Input id="phone" placeholder="(11) 99999-9999" />
+                  <Input id="phone" placeholder="(11) 99999-9999" value={novo.telefone} onChange={(e)=>setNovo({...novo, telefone:e.target.value})} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city">Cidade</Label>
-                  <Input id="city" placeholder="São Paulo" />
+                  <Input id="city" placeholder="São Paulo" value={novo.cidade} onChange={(e)=>setNovo({...novo, cidade:e.target.value})} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
-                  <Select defaultValue="ativo">
+                  <Select value={novo.status} onValueChange={(v)=>setNovo({...novo, status:v})}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -181,6 +258,24 @@ export default function AdminClientes() {
                       <SelectItem value="ativo">Ativo</SelectItem>
                       <SelectItem value="pendente">Pendente</SelectItem>
                       <SelectItem value="inativo">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="senha">Senha</Label>
+                  <Input id="senha" type="password" placeholder="Defina uma senha" value={novo.senha} onChange={(e)=>setNovo({...novo, senha:e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gerente">Gerente</Label>
+                  <Select value={String(novo.ind_gerente)} onValueChange={(v)=>setNovo({...novo, ind_gerente:Number(v)})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Não</SelectItem>
+                      <SelectItem value="1">Sim</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -194,7 +289,7 @@ export default function AdminClientes() {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleAddClient}>Salvar Cliente</Button>
+              <Button onClick={handleAddClient} disabled={isSaving}>{isSaving?'Salvando...':'Salvar Funcionário'}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -240,17 +335,17 @@ export default function AdminClientes() {
         </CardContent>
       </Card>
 
-      {/* Tabela de Clientes */}
+      {/* Tabela de Funcionários */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Clientes ({filteredClients.length})</CardTitle>
-          <CardDescription>Todos os clientes cadastrados no sistema</CardDescription>
+          <CardTitle>Lista de Funcionários ({filteredClients.length})</CardTitle>
+          <CardDescription>Todos os funcionários cadastrados no sistema</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Cliente</TableHead>
+                <TableHead>Funcionário</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Documento</TableHead>
                 <TableHead>Localização</TableHead>

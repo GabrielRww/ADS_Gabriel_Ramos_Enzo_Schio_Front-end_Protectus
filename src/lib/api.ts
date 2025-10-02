@@ -97,13 +97,19 @@ class ApiService {
 
   // Autenticação
   async login(credentials: LoginRequest): Promise<ApiResponse<{ user: User; token: string }>> {
-    // Backend espera campo 'senha' e rota '/auth/login-cliente'
-    const resp = await this.request<any>('/auth/login-cliente', {
+    // Tenta cliente e, se falhar, tenta funcionário
+    const payload = { email: credentials.email, senha: credentials.password };
+    let resp = await this.request<any>('/auth/login-cliente', {
       method: 'POST',
-      body: JSON.stringify({ email: credentials.email, senha: credentials.password }),
+      body: JSON.stringify(payload),
     });
-
-    if (!resp.success) return resp as ApiResponse<any>;
+    if (!resp.success) {
+      const tryFunc = await this.request<any>('/auth/login-funcionario', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      if (tryFunc.success) resp = tryFunc; else return resp as ApiResponse<any>;
+    }
 
     const raw = resp.data || {};
     const token = raw.access_token || raw.token;
@@ -309,6 +315,29 @@ class ApiService {
   // Clientes (para funcionários)
   async getClients(): Promise<ApiResponse<User[]>> {
     return this.request<User[]>('/clients');
+  }
+
+  // Funcionários
+  async getFuncionarios(): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>('/funcionarios');
+  }
+
+  async createFuncionario(data: any): Promise<ApiResponse<any>> {
+    return this.request<any>('/funcionarios', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateFuncionario(id: string | number, data: any): Promise<ApiResponse<any>> {
+    return this.request<any>(`/funcionarios/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteFuncionario(id: string | number): Promise<ApiResponse> {
+    return this.request(`/funcionarios/${id}`, { method: 'DELETE' });
   }
 
   // Rastreadores
