@@ -27,7 +27,9 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    const success = await login(email, password);
+  // Heurística simples: se o email parece corporativo/protectus, tenta funcionario primeiro
+  const roleHint = /@protectus\./i.test(email) ? 'funcionario' : undefined;
+  const success = await login(email, password, roleHint as any);
     
       if (success) {
         // Redireciona baseado na role do usuário logado

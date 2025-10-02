@@ -5,8 +5,13 @@ const NotFound = () => {
   const location = useLocation();
 
   useEffect(() => {
-    console.error(
-      "404 Error: User attempted to access non-existent route:",
+    // Evita poluir o console com 404 de rotas esperadas (ex.: /login quando já autenticado)
+    if (location.pathname === '/login') {
+      console.warn('404 (benigno): redirecionamento esperado para /login');
+      return;
+    }
+    console.warn(
+      '404: rota não encontrada',
       location.pathname
     );
   }, [location.pathname]);

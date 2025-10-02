@@ -10,6 +10,7 @@ export interface ApiResponse<T = any> {
 export interface LoginRequest {
   email: string;
   password: string;
+  roleHint?: 'cliente' | 'funcionario';
 }
 
 export interface RegisterRequest {
@@ -106,10 +107,14 @@ class ApiService {
     const payload = { email: credentials.email, senha: credentials.password, password: credentials.password };
     const tryLogin = async (path: string) => this.request<any>(path, { method: 'POST', body: JSON.stringify(payload) });
 
-    let resp = await tryLogin(pathCliente);
+    const preferFuncionario = credentials.roleHint === 'funcionario';
+    const firstPath = preferFuncionario ? pathFuncionario : pathCliente;
+    const secondPath = preferFuncionario ? pathCliente : pathFuncionario;
+
+    let resp = await tryLogin(firstPath);
     if (!resp.success) {
-      const tryFunc = await tryLogin(pathFuncionario);
-      if (tryFunc.success) resp = tryFunc; else return resp as ApiResponse<any>;
+      const trySecond = await tryLogin(secondPath);
+      if (trySecond.success) resp = trySecond; else return resp as ApiResponse<any>;
     }
 
     const raw = resp.data || {};
