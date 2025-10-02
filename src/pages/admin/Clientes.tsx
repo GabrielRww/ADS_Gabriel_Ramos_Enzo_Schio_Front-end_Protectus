@@ -28,7 +28,7 @@ export default function AdminClientes() {
     cidade: "",
     status: "ativo",
     senha: "",
-    ind_gerente: 0,
+    indGerente: 0,
   });
 
   const clients = [
@@ -149,7 +149,8 @@ export default function AdminClientes() {
         cidade: novo.cidade,
         status: novo.status,
         senha: novo.senha,
-        ind_gerente: Number(novo.ind_gerente) || 0,
+        // Envia na forma camelCase solicitada: IndGerente (==1)
+        IndGerente: Number(novo.indGerente) === 1 ? 1 : 0,
       };
       const resp = await apiService.createFuncionario(payload);
       if (resp.success) {
@@ -270,7 +271,7 @@ export default function AdminClientes() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="gerente">Gerente</Label>
-                  <Select value={String(novo.ind_gerente)} onValueChange={(v)=>setNovo({...novo, ind_gerente:Number(v)})}>
+                  <Select value={String(novo.indGerente)} onValueChange={(v)=>setNovo({...novo, indGerente:Number(v)})}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

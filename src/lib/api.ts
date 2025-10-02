@@ -97,17 +97,18 @@ class ApiService {
 
   // Autenticação
   async login(credentials: LoginRequest): Promise<ApiResponse<{ user: User; token: string }>> {
-    // Tenta cliente e, se falhar, tenta funcionário
-    const payload = { email: credentials.email, senha: credentials.password };
-    let resp = await this.request<any>('/auth/login-cliente', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    // Endpoints configuráveis
+    const env: any = (import.meta as any).env || {};
+    const pathCliente = env.VITE_LOGIN_CLIENTE_PATH || '/auth/login-cliente';
+    const pathFuncionario = env.VITE_LOGIN_FUNCIONARIO_PATH || '/auth/login-funcionario';
+
+    // Envia ambos os campos para evitar tentativas duplicadas e ruído de 401/400
+    const payload = { email: credentials.email, senha: credentials.password, password: credentials.password };
+    const tryLogin = async (path: string) => this.request<any>(path, { method: 'POST', body: JSON.stringify(payload) });
+
+    let resp = await tryLogin(pathCliente);
     if (!resp.success) {
-      const tryFunc = await this.request<any>('/auth/login-funcionario', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      const tryFunc = await tryLogin(pathFuncionario);
       if (tryFunc.success) resp = tryFunc; else return resp as ApiResponse<any>;
     }
 
@@ -116,6 +117,8 @@ class ApiService {
     const rawUser = (raw.user as Partial<User>) || raw.data?.user || {};
     // Normaliza o usuário para garantir role e campos mínimos
     const isManager =
+      (rawUser as any)?.IndGerente === 1 ||
+      (rawUser as any)?.IndGerente === '1' ||
       (rawUser as any)?.ind_gerente === 1 ||
       (rawUser as any)?.ind_gerente === '1' ||
       (rawUser as any)?.gerente === true ||
@@ -345,7 +348,8 @@ class ApiService {
       cidade: data.cidade ?? data.city,
       estado: data.estado ?? data.uf,
       senha: data.senha ?? data.password,
-      ind_gerente: Number(data.ind_gerente ?? 0),
+      // Flag de gerente em camelCase solicitado: IndGerente (== 1)
+      IndGerente: Number(data.indGerente ?? data.IndGerente ?? data.ind_gerente ?? 0) === 1 ? 1 : 0,
     };
     return this.request<any>('/users/funcionario', {
       method: 'POST',
@@ -360,7 +364,7 @@ class ApiService {
       des_usuario: data.des_usuario ?? data.nome ?? data.name,
       telefone: (data.telefone ?? data.phone ?? '').replace?.(/\D/g, '') ?? data.telefone,
       cpf: (data.cpf ?? data.documento ?? '').replace?.(/\D/g, '') ?? data.cpf,
-      ind_gerente: Number(data.ind_gerente ?? 0),
+      IndGerente: Number(data.indGerente ?? data.IndGerente ?? data.ind_gerente ?? 0) === 1 ? 1 : 0,
     };
     return this.request<any>('/users/funcionario', {
       method: 'PUT',
