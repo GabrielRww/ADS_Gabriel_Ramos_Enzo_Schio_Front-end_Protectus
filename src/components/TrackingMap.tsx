@@ -1,6 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,26 +9,34 @@ interface Vehicle {
   id: string;
   name: string;
   plate: string;
-  coordinates: [number, number];
+  coordinates: { lat: number; lng: number };
   status: 'moving' | 'stopped' | 'offline';
   speed: number;
   lastUpdate: string;
 }
 
+declare global {
+  interface Window {
+    google: any;
+    initMap: () => void;
+  }
+}
+
 const TrackingMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [mapboxToken, setMapboxToken] = useState('');
+  const mapRef = useRef<any>(null);
+  const [googleApiKey, setGoogleApiKey] = useState('');
+  const [isApiLoaded, setIsApiLoaded] = useState(false);
   const [isTokenValid, setIsTokenValid] = useState(false);
   const { toast } = useToast();
 
-  // Carros fake em São Paulo
+  // Veículos em São Paulo
   const vehicles: Vehicle[] = [
     {
       id: 'V001',
       name: 'Honda Civic',
       plate: 'ABC-1234',
-      coordinates: [-46.6333, -23.5505], // Av. Paulista
+      coordinates: { lat: -23.5505, lng: -46.6333 }, // Av. Paulista
       status: 'moving',
       speed: 45,
       lastUpdate: '2 min atrás'
@@ -39,7 +45,7 @@ const TrackingMap = () => {
       id: 'V002',
       name: 'Toyota Corolla',
       plate: 'DEF-5678',
-      coordinates: [-46.6634, -23.5489], // Vila Madalena
+      coordinates: { lat: -23.5489, lng: -46.6634 }, // Vila Madalena
       status: 'stopped',
       speed: 0,
       lastUpdate: '5 min atrás'
@@ -48,7 +54,7 @@ const TrackingMap = () => {
       id: 'V003',
       name: 'Ford Ka',
       plate: 'GHI-9012',
-      coordinates: [-46.6566, -23.5613], // Liberdade
+      coordinates: { lat: -23.5613, lng: -46.6566 }, // Liberdade
       status: 'moving',
       speed: 32,
       lastUpdate: '1 min atrás'
@@ -57,146 +63,190 @@ const TrackingMap = () => {
       id: 'V004',
       name: 'Volkswagen Gol',
       plate: 'JKL-3456',
-      coordinates: [-46.6927, -23.5816], // Butantã
+      coordinates: { lat: -23.5816, lng: -46.6927 }, // Butantã
       status: 'offline',
       speed: 0,
       lastUpdate: '45 min atrás'
     }
   ];
 
-  const validateAndSetToken = () => {
-    if (!mapboxToken.trim()) {
-      toast({
-        title: "Token necessário",
-        description: "Por favor, insira seu token público do Mapbox",
-        variant: "destructive"
-      });
-      return;
-    }
+  const loadGoogleMapsScript = (apiKey: string) => {
+    return new Promise((resolve, reject) => {
+      // Verificar se já está carregado
+      if (window.google && window.google.maps) {
+        resolve(window.google);
+        return;
+      }
 
-    // Validação básica do formato do token
-    if (!mapboxToken.startsWith('pk.')) {
-      toast({
-        title: "Token inválido",
-        description: "O token público do Mapbox deve começar com 'pk.'",
-        variant: "destructive"
-      });
-      return;
-    }
+      // Remover script anterior se existir
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+      if (existingScript) {
+        existingScript.remove();
+      }
 
-    setIsTokenValid(true);
-    toast({
-      title: "Token configurado!",
-      description: "Carregando mapa...",
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=marker`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve(window.google);
+      script.onerror = (error) => reject(error);
+      document.head.appendChild(script);
     });
   };
 
-  useEffect(() => {
-    if (!isTokenValid || !mapContainer.current) return;
+  const validateAndSetToken = async () => {
+    if (!googleApiKey.trim()) {
+      toast({
+        title: "API Key necessária",
+        description: "Por favor, insira sua API Key do Google Maps",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
-      mapboxgl.accessToken = mapboxToken;
-      
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [-46.6333, -23.5505], // São Paulo center
-        zoom: 11,
+      toast({
+        title: "Carregando Google Maps...",
+        description: "Aguarde enquanto o mapa é configurado",
       });
 
-      // Adicionar controles de navegação
-      map.current.addControl(
-        new mapboxgl.NavigationControl(),
-        'top-right'
-      );
+      await loadGoogleMapsScript(googleApiKey);
+      setIsApiLoaded(true);
+      setIsTokenValid(true);
+      
+      toast({
+        title: "Google Maps configurado!",
+        description: "O mapa está pronto para uso",
+      });
+    } catch (error) {
+      console.error('Erro ao carregar Google Maps:', error);
+      toast({
+        title: "Erro ao carregar",
+        description: "Verifique se a API Key está correta e tem as permissões necessárias",
+        variant: "destructive"
+      });
+    }
+  };
 
-      // Aguardar o mapa carregar
-      map.current.on('load', () => {
-        // Adicionar markers dos veículos
-        vehicles.forEach((vehicle) => {
-          const el = document.createElement('div');
-          el.className = 'vehicle-marker';
-          el.style.cssText = `
-            width: 32px;
-            height: 32px;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${
-              vehicle.status === 'moving' 
-                ? '%2300d4aa' 
-                : vehicle.status === 'stopped' 
-                ? '%23f59e0b' 
-                : '%23ef4444'
-            }"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>');
-            background-size: contain;
-            background-repeat: no-repeat;
-            cursor: pointer;
-            border: 2px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-          `;
+  const getMarkerColor = (status: string): string => {
+    switch (status) {
+      case 'moving':
+        return '#00d4aa';
+      case 'stopped':
+        return '#f59e0b';
+      case 'offline':
+        return '#ef4444';
+      default:
+        return '#00d4aa';
+    }
+  };
 
-          // Popup com informações do veículo
-          const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-            <div style="padding: 8px; min-width: 200px;">
-              <h4 style="margin: 0 0 8px 0; font-weight: bold; color: #1f2937;">${vehicle.name}</h4>
-              <p style="margin: 4px 0; color: #6b7280; font-size: 14px;"><strong>Placa:</strong> ${vehicle.plate}</p>
-              <p style="margin: 4px 0; color: #6b7280; font-size: 14px;"><strong>Status:</strong> 
-                <span style="color: ${
-                  vehicle.status === 'moving' 
-                    ? '#10b981' 
-                    : vehicle.status === 'stopped' 
-                    ? '#f59e0b' 
-                    : '#ef4444'
-                };">
-                  ${vehicle.status === 'moving' ? 'Em movimento' : vehicle.status === 'stopped' ? 'Parado' : 'Offline'}
+  const getStatusText = (status: string): string => {
+    switch (status) {
+      case 'moving':
+        return 'Em movimento';
+      case 'stopped':
+        return 'Parado';
+      case 'offline':
+        return 'Offline';
+      default:
+        return status;
+    }
+  };
+
+  useEffect(() => {
+    if (!isApiLoaded || !isTokenValid || !mapContainer.current || !window.google) return;
+
+    try {
+      // Criar o mapa
+      const map = new window.google.maps.Map(mapContainer.current, {
+        center: { lat: -23.5505, lng: -46.6333 }, // São Paulo center
+        zoom: 11,
+        mapId: 'DEMO_MAP_ID',
+        disableDefaultUI: false,
+        zoomControl: true,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
+      });
+
+      mapRef.current = map;
+
+      // Adicionar marcadores dos veículos
+      vehicles.forEach((vehicle) => {
+        const markerColor = getMarkerColor(vehicle.status);
+        
+        // Criar ícone SVG para o marcador
+        const svgIcon = {
+          path: 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z',
+          fillColor: markerColor,
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+          scale: 1.5,
+          anchor: new window.google.maps.Point(12, 12),
+        };
+
+        const marker = new window.google.maps.Marker({
+          position: vehicle.coordinates,
+          map: map,
+          icon: svgIcon,
+          title: vehicle.name,
+        });
+
+        // Criar InfoWindow
+        const infoWindow = new window.google.maps.InfoWindow({
+          content: `
+            <div style="padding: 8px; min-width: 200px; font-family: system-ui, -apple-system, sans-serif;">
+              <h4 style="margin: 0 0 8px 0; font-weight: bold; color: #1f2937; font-size: 14px;">${vehicle.name}</h4>
+              <p style="margin: 4px 0; color: #6b7280; font-size: 13px;"><strong>Placa:</strong> ${vehicle.plate}</p>
+              <p style="margin: 4px 0; color: #6b7280; font-size: 13px;">
+                <strong>Status:</strong> 
+                <span style="color: ${markerColor}; font-weight: 500;">
+                  ${getStatusText(vehicle.status)}
                 </span>
               </p>
-              <p style="margin: 4px 0; color: #6b7280; font-size: 14px;"><strong>Velocidade:</strong> ${vehicle.speed} km/h</p>
+              <p style="margin: 4px 0; color: #6b7280; font-size: 13px;"><strong>Velocidade:</strong> ${vehicle.speed} km/h</p>
               <p style="margin: 4px 0 0 0; color: #9ca3af; font-size: 12px;">Atualizado ${vehicle.lastUpdate}</p>
             </div>
-          `);
+          `
+        });
 
-          new mapboxgl.Marker(el)
-            .setLngLat(vehicle.coordinates)
-            .setPopup(popup)
-            .addTo(map.current!);
+        marker.addListener('click', () => {
+          infoWindow.open(map, marker);
         });
       });
 
     } catch (error) {
-      console.error('Erro ao carregar mapa:', error);
+      console.error('Erro ao criar mapa:', error);
       toast({
         title: "Erro no mapa",
-        description: "Verifique se o token do Mapbox está correto",
+        description: "Ocorreu um erro ao inicializar o mapa",
         variant: "destructive"
       });
-      setIsTokenValid(false);
     }
-
-    return () => {
-      map.current?.remove();
-    };
-  }, [isTokenValid, mapboxToken]);
+  }, [isApiLoaded, isTokenValid]);
 
   if (!isTokenValid) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Configurar Mapbox</CardTitle>
+          <CardTitle>Configurar Google Maps</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground text-sm">
-            Para exibir o mapa interativo, você precisa configurar seu token público do Mapbox.
-            Acesse <a href="https://mapbox.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mapbox.com</a> e 
-            encontre seu token na seção "Tokens" do dashboard.
+            Para exibir o mapa interativo, você precisa configurar sua API Key do Google Maps.
+            Acesse <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Cloud Console</a> e 
+            ative a Maps JavaScript API para obter sua chave.
           </p>
           <div className="space-y-2">
-            <Label htmlFor="mapbox-token">Token Público do Mapbox</Label>
+            <Label htmlFor="google-api-key">API Key do Google Maps</Label>
             <Input
-              id="mapbox-token"
+              id="google-api-key"
               type="password"
-              placeholder="pk.eyJ1IjoieW91ci11c2VybmFtZSIsImEiOiJ..."
-              value={mapboxToken}
-              onChange={(e) => setMapboxToken(e.target.value)}
+              placeholder="AIzaSy..."
+              value={googleApiKey}
+              onChange={(e) => setGoogleApiKey(e.target.value)}
             />
           </div>
           <Button onClick={validateAndSetToken} className="w-full">
