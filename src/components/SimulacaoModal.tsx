@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSimulation } from '@/hooks/useApi';
 import { ChevronLeft, ChevronRight, User, FileText, Car, Home, Smartphone, CheckCircle } from 'lucide-react';
 import { apiService } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 
 interface SimulacaoModalProps {
   open: boolean;
@@ -39,6 +40,72 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   });
   const { toast } = useToast();
   const { simulate, loading: simulationLoading } = useSimulation();
+  const { isAuthenticated } = useAuthStore();
+
+  // Helper para normalizar opções { id, nome } evitando [object Object]
+  const toOption = (m: any) => {
+    const idCandidate = m?.id ?? m?.value ?? m?.codigo ?? m?.cod ?? m?.sigla ?? m?.code ?? m?.key;
+    const id = idCandidate != null && idCandidate !== ''
+      ? String(idCandidate)
+      : (typeof m === 'string' || typeof m === 'number')
+        ? String(m)
+        : (['id','codigo','cod','code','key'].find((k) => m && m[k] != null) ? String(m[(['id','codigo','cod','code','key'].find((k) => m && m[k] != null)) as string]) : JSON.stringify(m));
+
+    const nameCandidates: any[] = [
+      m?.nome,
+      m?.nome?.descricao,
+      m?.nome?.name,
+      m?.nome?.valor,
+      m?.label,
+      m?.label?.pt,
+      m?.label?.value,
+      m?.descricao,
+      m?.description,
+      m?.name,
+      m?.name?.pt,
+      m?.name?.value,
+      m?.modelo,
+      m?.modelo?.descricao,
+      m?.modelo?.name,
+      m?.title,
+    ];
+    let nome = nameCandidates.find((v) => typeof v === 'string') as string | undefined;
+    if (!nome) {
+      if (typeof m === 'string' || typeof m === 'number') nome = String(m);
+      else {
+        const firstString = Object.values(m || {}).find((v) => typeof v === 'string') as string | undefined;
+        nome = firstString || `[${id}]`;
+      }
+    }
+    return { id, nome };
+  };
+
+  // Helper específico para anos: tenta extrair um número e usá-lo como id e nome
+  const toYearOption = (m: any) => {
+    let year: string | null = null;
+    if (typeof m === 'number') year = String(m);
+    else if (typeof m === 'string') {
+      const digits = m.match(/\d{4}/)?.[0];
+      if (digits) year = digits;
+    } else if (m && typeof m === 'object') {
+      const num = m.ano ?? m.year ?? m.valor ?? m.value ?? m.modelo_ano ?? m.anoModelo ?? m['ano-modelo'];
+      if (typeof num === 'number') year = String(num);
+      else if (typeof num === 'string') {
+        const digits = num.match(/\d{4}/)?.[0];
+        if (digits) year = digits; else year = num;
+      } else {
+        // Procura primeira propriedade numérica
+        const firstNum = Object.values(m).find((v) => typeof v === 'number');
+        if (typeof firstNum === 'number') year = String(firstNum);
+        else {
+          const firstStrDigits = Object.values(m).find((v) => typeof v === 'string' && /\d{4}/.test(v as string)) as string | undefined;
+          if (firstStrDigits) year = firstStrDigits.match(/\d{4}/)![0];
+        }
+      }
+    }
+    if (!year) return toOption(m); // fallback genérico
+    return { id: year, nome: year };
+  };
   // Catálogo veicular dinâmico
   const [marcas, setMarcas] = useState<Array<{ id: string | number; nome: string }>>([]);
   const [modelos, setModelos] = useState<Array<{ id: string | number; nome: string }>>([]);
@@ -46,16 +113,28 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   const [loadingCatalog, setLoadingCatalog] = useState({ marcas: false, modelos: false, anos: false });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || tipoSeguro !== 'veiculo') return;
+    if (!isAuthenticated) {
+      setMarcas([]); setModelos([]); setAnos([]);
+      return;
+    }
     // Carregar marcas ao abrir o modal
     (async () => {
       try {
         setLoadingCatalog((s) => ({ ...s, marcas: true }));
         const resp = await apiService.getMarcas();
-        if (resp.success && Array.isArray(resp.data)) {
-          const mapped = resp.data.map((m: any) => ({ id: m.id ?? m.value ?? m.codigo ?? m.cod ?? m.sigla ?? String(m), nome: m.nome ?? m.label ?? m.descricao ?? m.name ?? String(m) }));
+        if (resp.success) {
+          const raw = resp.data as any;
+          const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.marcas) ? raw.marcas : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
+          const mapped = arr.map(toOption);
           setMarcas(mapped);
         } else {
+          const msg = (resp as any)?.error || 'Não foi possível carregar marcas';
+          if (String(msg).includes('401')) {
+            toast({ title: 'Sessão necessária', description: 'Faça login para carregar marcas de veículos.', variant: 'destructive' });
+          } else {
+            toast({ title: 'Falha ao carregar marcas', description: String(msg), variant: 'destructive' });
+          }
           setMarcas([]);
         }
       } catch (e) {
@@ -64,20 +143,31 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         setLoadingCatalog((s) => ({ ...s, marcas: false }));
       }
     })();
-  }, [open]);
+  }, [open, tipoSeguro, isAuthenticated]);
 
   // Quando selecionar marca, carregar modelos e limpar dependentes
   useEffect(() => {
     const marca = formData.marca;
-    if (!marca) { setModelos([]); setAnos([]); return; }
+    if (tipoSeguro !== 'veiculo' || !marca || !isAuthenticated) { setModelos([]); setAnos([]); return; }
     (async () => {
       try {
         setLoadingCatalog((s) => ({ ...s, modelos: true }));
-        const resp = await apiService.getModelos({ marca: String(marca) });
-        if (resp.success && Array.isArray(resp.data)) {
-          const mapped = resp.data.map((m: any) => ({ id: m.id ?? m.value ?? m.codigo ?? m.cod ?? m.sigla ?? String(m), nome: m.nome ?? m.label ?? m.descricao ?? m.name ?? String(m) }));
+        // Muitas APIs esperam o nome da marca, não o id
+  const marcaNome = marcas.find((m) => String(m.id) === String(marca))?.nome || String(marca);
+  console.debug('Carregando modelos para marca:', marcaNome);
+  const resp = await apiService.getModelos({ marca: String(marcaNome) });
+        if (resp.success) {
+          const raw = resp.data as any;
+          const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.modelos) ? raw.modelos : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
+          const mapped = arr.map(toOption);
           setModelos(mapped);
         } else {
+          const msg = (resp as any)?.error || 'Não foi possível carregar modelos';
+          if (String(msg).includes('401')) {
+            toast({ title: 'Sessão necessária', description: 'Faça login para carregar modelos.', variant: 'destructive' });
+          } else {
+            toast({ title: 'Falha ao carregar modelos', description: String(msg), variant: 'destructive' });
+          }
           setModelos([]);
         }
         // reset campos dependentes
@@ -89,20 +179,32 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         setLoadingCatalog((s) => ({ ...s, modelos: false }));
       }
     })();
-  }, [formData.marca]);
+  }, [formData.marca, tipoSeguro, isAuthenticated]);
 
   // Quando selecionar modelo, carregar anos e limpar dependente
   useEffect(() => {
     const marca = formData.marca; const modelo = formData.modelo;
-    if (!marca || !modelo) { setAnos([]); return; }
+    if (tipoSeguro !== 'veiculo' || !marca || !modelo || !isAuthenticated) { setAnos([]); return; }
     (async () => {
       try {
         setLoadingCatalog((s) => ({ ...s, anos: true }));
-        const resp = await apiService.getAnos({ marca: String(marca), modelo: String(modelo) });
-        if (resp.success && Array.isArray(resp.data)) {
-          const mapped = resp.data.map((m: any) => ({ id: m.id ?? m.value ?? m.codigo ?? m.cod ?? m.sigla ?? String(m), nome: m.nome ?? m.label ?? m.descricao ?? m.name ?? String(m) }));
+        // Muitas APIs esperam nome de marca e modelo
+  const marcaNome = marcas.find((m) => String(m.id) === String(marca))?.nome || String(marca);
+  const modeloNome = modelos.find((m) => String(m.id) === String(modelo))?.nome || String(modelo);
+  console.debug('Carregando anos para:', { marca: marcaNome, modelo: modeloNome });
+  const resp = await apiService.getAnos({ marca: String(marcaNome), modelo: String(modeloNome) });
+        if (resp.success) {
+          const raw = resp.data as any;
+          const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.anos) ? raw.anos : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
+          const mapped = arr.map(toYearOption);
           setAnos(mapped);
         } else {
+          const msg = (resp as any)?.error || 'Não foi possível carregar anos';
+          if (String(msg).includes('401')) {
+            toast({ title: 'Sessão necessária', description: 'Faça login para carregar anos.', variant: 'destructive' });
+          } else {
+            toast({ title: 'Falha ao carregar anos', description: String(msg), variant: 'destructive' });
+          }
           setAnos([]);
         }
         // reset ano
@@ -113,7 +215,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         setLoadingCatalog((s) => ({ ...s, anos: false }));
       }
     })();
-  }, [formData.modelo]);
+  }, [formData.modelo, tipoSeguro, isAuthenticated]);
 
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
@@ -373,9 +475,9 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="marca">Marca *</Label>
-                  <Select disabled={loadingCatalog.marcas} value={(formData.marca as any) || ''} onValueChange={(value) => handleInputChange('marca', value)}>
+                  <Select disabled={!isAuthenticated || loadingCatalog.marcas} value={(formData.marca as any) || ''} onValueChange={(value) => handleInputChange('marca', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder={loadingCatalog.marcas ? 'Carregando marcas...' : 'Selecione a marca'} />
+                      <SelectValue placeholder={!isAuthenticated ? 'Faça login para carregar marcas' : (loadingCatalog.marcas ? 'Carregando marcas...' : 'Selecione a marca')} />
                     </SelectTrigger>
                     <SelectContent>
                       {marcas.map((m) => (
@@ -387,9 +489,9 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                 
                 <div className="space-y-2">
                   <Label htmlFor="modelo">Modelo *</Label>
-                  <Select disabled={!formData.marca || loadingCatalog.modelos} value={(formData.modelo as any) || ''} onValueChange={(value) => handleInputChange('modelo', value)}>
+                  <Select disabled={!isAuthenticated || !formData.marca || loadingCatalog.modelos} value={(formData.modelo as any) || ''} onValueChange={(value) => handleInputChange('modelo', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder={!formData.marca ? 'Selecione a marca primeiro' : (loadingCatalog.modelos ? 'Carregando modelos...' : 'Selecione o modelo')} />
+                      <SelectValue placeholder={!isAuthenticated ? 'Faça login primeiro' : (!formData.marca ? 'Selecione a marca primeiro' : (loadingCatalog.modelos ? 'Carregando modelos...' : 'Selecione o modelo'))} />
                     </SelectTrigger>
                     <SelectContent>
                       {modelos.map((m) => (
@@ -401,9 +503,9 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                 
                 <div className="space-y-2">
                   <Label htmlFor="ano">Ano *</Label>
-                  <Select disabled={!formData.modelo || loadingCatalog.anos} value={(formData.ano as any) || ''} onValueChange={(value) => handleInputChange('ano', value)}>
+                  <Select disabled={!isAuthenticated || !formData.modelo || loadingCatalog.anos || anos.length === 0} value={(formData.ano as any) || ''} onValueChange={(value) => handleInputChange('ano', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder={!formData.modelo ? 'Selecione o modelo primeiro' : (loadingCatalog.anos ? 'Carregando anos...' : 'Ano do veículo')} />
+                      <SelectValue placeholder={!isAuthenticated ? 'Faça login primeiro' : (!formData.modelo ? 'Selecione o modelo primeiro' : (loadingCatalog.anos ? 'Carregando anos...' : (anos.length ? 'Ano do veículo' : 'Nenhum ano disponível')))} />
                     </SelectTrigger>
                     <SelectContent>
                       {anos.map((a) => (
@@ -420,16 +522,6 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     value={formData.placa || ''}
                     onChange={(e) => handleInputChange('placa', e.target.value)}
                     placeholder="ABC-1234"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="cep">CEP de pernoite *</Label>
-                  <Input
-                    id="cep"
-                    value={formData.cep || ''}
-                    onChange={(e) => handleInputChange('cep', e.target.value)}
-                    placeholder="00000-000"
                   />
                 </div>
                 

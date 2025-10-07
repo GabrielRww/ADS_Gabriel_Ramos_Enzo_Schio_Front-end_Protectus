@@ -51,15 +51,26 @@ class ApiService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`;
-    
+    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
+
+    const isGet = !options.method || String(options.method).toUpperCase() === 'GET';
+    const baseHeaders: Record<string, any> = {
+      Accept: 'application/json',
+      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+    };
+    // Só define Content-Type quando houver body não-FormData
+    const hasBody = typeof (options as any).body !== 'undefined' && (options as any).body !== null;
+    const isFormData = hasBody && typeof FormData !== 'undefined' && (options as any).body instanceof FormData;
+    if (!isGet && hasBody && !isFormData) {
+      baseHeaders['Content-Type'] = 'application/json';
+    }
+
     const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
-        ...options.headers,
-      },
       ...options,
+      headers: {
+        ...baseHeaders,
+        ...(options.headers || {}),
+      },
     };
 
     try {
@@ -400,7 +411,6 @@ class ApiService {
     });
   }
 
-  // Incidentes — removidos do app atual por não serem usados
 
   // Simulação de seguro
   async simulateInsurance(simulationData: any): Promise<ApiResponse<any>> {
@@ -411,21 +421,52 @@ class ApiService {
   }
 
   // Catálogo de veículos (para simulação): marcas, modelos, anos
+  private buildVehicleHeaders(): Record<string, string> {
+    const env: any = (import.meta as any).env || {};
+    const customHeader = (env.VITE_VEHICLE_AUTH_HEADER as string) || '';
+    const customValue = (env.VITE_VEHICLE_AUTH_VALUE as string) || '';
+    if (customHeader && customValue) {
+      // Suporta placeholder {token}
+      const value = customValue.replace('{token}', this.token || '');
+      return { [customHeader]: value } as Record<string, string>;
+    }
+    // Sem custom, rely no Authorization padrão já incluído em request()
+    return {};
+  }
+
   async getMarcas(): Promise<ApiResponse<any[]>> {
-    return this.request<any[]>('/marcas');
+    const env: any = (import.meta as any).env || {};
+    const baseVehicle = (env.VITE_VEHICLE_API_URL as string) || this.baseURL;
+  const marcasPath = (env.VITE_VEHICLE_MARCAS_PATH as string) || '/insurances/marcas';
+    const url = marcasPath.startsWith('http')
+      ? marcasPath
+      : `${baseVehicle}${marcasPath.startsWith('/') ? '' : '/'}${marcasPath}`;
+    return this.request<any[]>(url, { headers: this.buildVehicleHeaders() });
   }
 
   async getModelos(params: { marca?: string } = {}): Promise<ApiResponse<any[]>> {
-    const qs = params.marca ? `?marca=${encodeURIComponent(params.marca)}` : '';
-    return this.request<any[]>(`/modelos${qs}`);
+    const env: any = (import.meta as any).env || {};
+    const baseVehicle = (env.VITE_VEHICLE_API_URL as string) || this.baseURL;
+  const modelosPath = (env.VITE_VEHICLE_MODELOS_PATH as string) || '/insurances/modelos';
+    const brandParam = (env.VITE_VEHICLE_PARAM_BRAND as string) || 'marca';
+    const qs = params.marca ? `?${brandParam}=${encodeURIComponent(params.marca)}` : '';
+    const urlBase = modelosPath.startsWith('http') ? modelosPath : `${baseVehicle}${modelosPath.startsWith('/') ? '' : '/'}${modelosPath}`;
+    const url = `${urlBase}${qs}`;
+    return this.request<any[]>(url, { headers: this.buildVehicleHeaders() });
   }
 
   async getAnos(params: { marca?: string; modelo?: string } = {}): Promise<ApiResponse<any[]>> {
-    const p: string[] = [];
-    if (params.marca) p.push(`marca=${encodeURIComponent(params.marca)}`);
-    if (params.modelo) p.push(`modelo=${encodeURIComponent(params.modelo)}`);
-    const qs = p.length ? `?${p.join('&')}` : '';
-    return this.request<any[]>(`/anos${qs}`);
+    const env: any = (import.meta as any).env || {};
+    const baseVehicle = (env.VITE_VEHICLE_API_URL as string) || this.baseURL;
+  const anosPath = (env.VITE_VEHICLE_ANOS_PATH as string) || '/insurances/anos';
+    const brandParam = (env.VITE_VEHICLE_PARAM_BRAND as string) || 'marca';
+    const modelParam = (env.VITE_VEHICLE_PARAM_MODEL as string) || 'modelo';
+    const qpMarca = params.marca ? `${brandParam}=${encodeURIComponent(params.marca)}` : '';
+    const qpModelo = params.modelo ? `${modelParam}=${encodeURIComponent(params.modelo)}` : '';
+    const q = [qpMarca, qpModelo].filter(Boolean).join('&');
+    const urlBase = anosPath.startsWith('http') ? anosPath : `${baseVehicle}${anosPath.startsWith('/') ? '' : '/'}${anosPath}`;
+    const url = q ? `${urlBase}?${q}` : urlBase;
+    return this.request<any[]>(url, { headers: this.buildVehicleHeaders() });
   }
 }
 
