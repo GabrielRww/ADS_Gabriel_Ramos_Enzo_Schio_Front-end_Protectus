@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,17 +9,46 @@ import { useAuthStore } from '@/store/authStore';
 import { apiService, type User } from '@/lib/api';
 import { Camera, Edit3, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { debugUserData } from '@/utils/debugUser';
 
 export function ClientProfile() {
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Debug completo ao montar
+  useEffect(() => {
+    console.log('Profile: Componente montado com user', user);
+    debugUserData();
+  }, []);
+  
+  // Helpers de formatação
+  const onlyDigits = (v: string) => (v || '').replace(/\D/g, '');
+  const fmtPhone = (v?: string) => {
+    const d = onlyDigits(v || '').slice(0, 11);
+    if (!d) return '';
+    if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').trim();
+    return d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim();
+  };
+  const fmtCpf = (v?: string) => {
+    const d = onlyDigits(v || '').slice(0, 11);
+    if (!d) return '';
+    return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4').trim();
+  };
+
+  const composeAddress = (u?: typeof user) => {
+    if (!u) return '';
+    const base = [u.address, u.addressNumber].filter(Boolean).join(', ');
+    // Campos de cidade/UF podem vir no futuro via profile API; mantém base por enquanto
+    return base || '';
+  };
+
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    phone: '(11) 99999-9999',
-    cpfCnpj: '123.456.789-00',
-    address: 'Rua das Flores, 123 - São Paulo, SP'
+    phone: fmtPhone((user as any)?.phone || (user as any)?.telefone),
+    cpfCnpj: fmtCpf((user as any)?.cpf),
+    address: composeAddress(user)
   });
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(user?.avatar);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -61,9 +90,9 @@ export function ClientProfile() {
     setFormData({
       name: user?.name || '',
       email: user?.email || '',
-      phone: '(11) 99999-9999',
-      cpfCnpj: '123.456.789-00',
-      address: 'Rua das Flores, 123 - São Paulo, SP'
+      phone: fmtPhone((user as any)?.phone || (user as any)?.telefone),
+      cpfCnpj: fmtCpf((user as any)?.cpf),
+      address: composeAddress(user)
     });
     setAvatarUrl(user?.avatar);
     setIsEditing(false);
@@ -91,6 +120,34 @@ export function ClientProfile() {
       toast({ title: 'Foto atualizada localmente', description: 'Ao habilitar a API de perfil, faremos o envio.' });
     }
   };
+
+  // Mantém os dados em sincronia quando o usuário for atualizado (ex.: pós-login/cadastro)
+  useEffect(() => {
+    if (user) {
+      const phoneFormatted = fmtPhone((user as any)?.phone || (user as any)?.telefone);
+      const cpfFormatted = fmtCpf((user as any)?.cpf);
+      const addressComposed = composeAddress(user);
+      
+      console.log('Profile: Sincronizando dados do usuário', {
+        phone: (user as any)?.phone,
+        telefone: (user as any)?.telefone,
+        cpf: (user as any)?.cpf,
+        address: user?.address,
+        phoneFormatted,
+        cpfFormatted,
+        addressComposed
+      });
+      
+      setFormData({
+        name: user?.name || '',
+        email: user?.email || '',
+        phone: phoneFormatted,
+        cpfCnpj: cpfFormatted,
+        address: addressComposed
+      });
+      setAvatarUrl(user?.avatar);
+    }
+  }, [user]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">

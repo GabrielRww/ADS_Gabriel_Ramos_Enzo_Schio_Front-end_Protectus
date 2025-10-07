@@ -34,6 +34,7 @@ export interface User {
   cpf?: string;
   cep?: string;
   address?: string;
+  addressNumber?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -44,7 +45,14 @@ class ApiService {
 
   constructor() {
     this.baseURL = API_BASE_URL;
-    this.token = localStorage.getItem('protectus-token');
+    const stored = localStorage.getItem('protectus-token');
+    // Sanitiza tokens inválidos ('undefined', 'null', vazio)
+    if (!stored || stored === 'undefined' || stored === 'null') {
+      this.token = null;
+      try { localStorage.removeItem('protectus-token'); } catch {}
+    } else {
+      this.token = stored;
+    }
   }
 
   private async request<T>(
@@ -54,9 +62,11 @@ class ApiService {
     const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
 
     const isGet = !options.method || String(options.method).toUpperCase() === 'GET';
+    const headersIn = (options.headers || {}) as Record<string, any>;
+    const skipAuth = headersIn['X-Skip-Auth'] === true || headersIn['X-Skip-Auth'] === 'true';
     const baseHeaders: Record<string, any> = {
       Accept: 'application/json',
-      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+      ...(!skipAuth && this.token ? { Authorization: `Bearer ${this.token}` } : {}),
     };
     // Só define Content-Type quando houver body não-FormData
     const hasBody = typeof (options as any).body !== 'undefined' && (options as any).body !== null;
@@ -65,11 +75,13 @@ class ApiService {
       baseHeaders['Content-Type'] = 'application/json';
     }
 
+    // Remove nossa flag interna antes do envio
+    const { ['X-Skip-Auth']: _skip, ...restHeaders } = headersIn;
     const config: RequestInit = {
       ...options,
       headers: {
         ...baseHeaders,
-        ...(options.headers || {}),
+        ...restHeaders,
       },
     };
 
@@ -97,9 +109,14 @@ class ApiService {
     }
   }
 
-  setToken(token: string) {
+  setToken(token: any) {
+    if (typeof token !== 'string' || !token.trim()) {
+      // token inválido: limpa
+      this.clearToken();
+      return;
+    }
     this.token = token;
-    localStorage.setItem('protectus-token', token);
+    try { localStorage.setItem('protectus-token', token); } catch {}
   }
 
   clearToken() {
@@ -114,9 +131,9 @@ class ApiService {
     const pathCliente = env.VITE_LOGIN_CLIENTE_PATH || '/auth/login-cliente';
     const pathFuncionario = env.VITE_LOGIN_FUNCIONARIO_PATH || '/auth/login-funcionario';
 
-    // Envia ambos os campos para evitar tentativas duplicadas e ruído de 401/400
-    const payload = { email: credentials.email, senha: credentials.password, password: credentials.password };
-    const tryLogin = async (path: string) => this.request<any>(path, { method: 'POST', body: JSON.stringify(payload) });
+    // Backend espera apenas { email, senha }
+    const payload = { email: credentials.email, senha: credentials.password };
+    const tryLogin = async (path: string) => this.request<any>(path, { method: 'POST', body: JSON.stringify(payload), headers: { 'X-Skip-Auth': 'true' } });
 
     const preferFuncionario = credentials.roleHint === 'funcionario';
     const firstPath = preferFuncionario ? pathFuncionario : pathCliente;
@@ -129,24 +146,18 @@ class ApiService {
     }
 
     const raw = resp.data || {};
-    const token = raw.access_token || raw.token;
-    const rawUser = (raw.user as Partial<User>) || raw.data?.user || {};
+    const token = (raw as any).access_token as string | undefined;
+    const rawUser = (raw as any)?.user || {};
     // Normaliza o usuário para garantir role e campos mínimos
-    const isManager =
-      (rawUser as any)?.IndGerente === 1 ||
-      (rawUser as any)?.IndGerente === '1' ||
-      (rawUser as any)?.ind_gerente === 1 ||
-      (rawUser as any)?.ind_gerente === '1' ||
-      (rawUser as any)?.gerente === true ||
-      String((rawUser as any)?.cargo || '').toLowerCase() === 'gerente';
+    const isManager = Boolean((rawUser as any)?.gerente === true || Number((rawUser as any)?.indGerente) === 1);
     const role: User['role'] = isManager
       ? 'gerente'
-      : (((rawUser as any)?.role as any) === 'funcionario' ? 'funcionario' : 'cliente');
+      : ((rawUser as any)?.tipo === 'funcionario' ? 'funcionario' : 'cliente');
     const phoneRaw = (rawUser as any)?.telefone || (rawUser as any)?.phone || (rawUser as any)?.celular || (rawUser as any)?.cel || (rawUser as any)?.tel;
     const cpfRaw = (rawUser as any)?.cpf || (rawUser as any)?.documento || (rawUser as any)?.doc;
     const user: User = {
-      id: (rawUser as any)?.id || (rawUser as any)?.cod_usuario || (rawUser as any)?.cod_cliente || credentials.email,
-      name: (rawUser as any)?.name || (rawUser as any)?.nome || (rawUser as any)?.des_usuario || credentials.email.split('@')[0],
+      id: (rawUser as any)?.codFuncionario || (rawUser as any)?.codCliente || (rawUser as any)?.id || credentials.email,
+      name: (rawUser as any)?.nome || (rawUser as any)?.name || (rawUser as any)?.des_usuario || credentials.email.split('@')[0],
       email: (rawUser as any)?.email || credentials.email,
       role,
       phone: typeof phoneRaw === 'string' ? phoneRaw : (typeof phoneRaw === 'number' ? String(phoneRaw) : undefined),
@@ -156,20 +167,15 @@ class ApiService {
   }
 
   async register(userData: RegisterRequest): Promise<ApiResponse<{ user: User; token?: string }>> {
-    // Backend de cadastro de cliente em '/users/cliente'
+    // Backend de cadastro de cliente em '/users/cliente' (DTO exige apenas estes campos)
     const payload = {
-      des_usuario: userData.name,
       nome: userData.name,
       email: userData.email,
       telefone: (userData.phone || '').replace(/\D/g, ''),
       cpf: (userData.cpf || '').replace(/\D/g, ''),
       cep: (userData.cep || '').replace(/\D/g, ''),
-      endereco: userData.address,
-      bairro: 'Centro', // valores padrão até termos CEP->endereço
-      cidade: 'Cidade Exemplo',
-      estado: 'SP',
       senha: userData.password,
-      role: userData.role,
+      status: 1, // Garante que o cliente fica ativo imediatamente
     };
 
     const resp = await this.request<any>('/users/cliente', {
@@ -183,14 +189,22 @@ class ApiService {
     const created = resp.data || {};
     const phoneRaw = created.telefone || created.phone || userData.phone;
     const cpfRaw = created.cpf || created.documento || userData.cpf;
+    const cepRaw = created.cep || userData.cep;
     const user: User = {
-      id: created.id || created.cod_usuario || created.cod_cliente || created.cod || created.email,
+      id: created.id || created.codCliente || created.cod_cliente || created.cod || created.email || userData.email,
       name: created.nome || created.des_usuario || userData.name,
       email: created.email || userData.email,
-      role: (created.role || userData.role || 'cliente') as User['role'],
-      phone: typeof phoneRaw === 'string' ? phoneRaw : (typeof phoneRaw === 'number' ? String(phoneRaw) : undefined),
-      cpf: typeof cpfRaw === 'string' ? cpfRaw : (typeof cpfRaw === 'number' ? String(cpfRaw) : undefined),
+      role: 'cliente',
+      phone: typeof phoneRaw === 'string' ? phoneRaw : (typeof phoneRaw === 'number' ? String(phoneRaw) : userData.phone),
+      cpf: typeof cpfRaw === 'string' ? cpfRaw : (typeof cpfRaw === 'number' ? String(cpfRaw) : userData.cpf),
+      cep: typeof cepRaw === 'string' ? cepRaw : (typeof cepRaw === 'number' ? String(cepRaw) : userData.cep),
+      address: userData.address, // Sempre pega do formulário pois backend não tem
     };
+    
+    console.log('API Register: Resposta do backend', created);
+    console.log('API Register: User construído', user);
+    console.log('API Register: userData original', { phone: userData.phone, cpf: userData.cpf, cep: userData.cep, address: userData.address });
+    
     const token = created.access_token || created.token; // se existir
     return { success: true, data: { user, token } };
   }
@@ -202,6 +216,51 @@ class ApiService {
       return { success: true, data: JSON.parse(userStr) } as ApiResponse<User>;
     }
     return { success: false, error: 'Sem usuário em cache' };
+  }
+
+  // Tenta buscar perfil completo do cliente no backend (telefone/cpf)
+  async fetchClienteProfile(hint: { id?: string; email?: string } = {}): Promise<ApiResponse<Partial<User>>> {
+    const env: any = (import.meta as any).env || {};
+    const enabled = String(env.VITE_PROFILE_API) === 'true';
+    if (!enabled) return { success: false, error: 'Profile API disabled' };
+
+    const configuredPath = (env.VITE_PROFILE_CLIENTE_GET_PATH as string) || '';
+    if (!configuredPath) return { success: false, error: 'Profile GET path not configured' };
+
+    // Constrói endpoint a partir de placeholders
+    let endpoint = configuredPath;
+    if (endpoint.includes('{id}') && hint.id) {
+      endpoint = endpoint.replace('{id}', encodeURIComponent(hint.id));
+    }
+    if (endpoint.includes('{email}') && hint.email) {
+      endpoint = endpoint.replace('{email}', encodeURIComponent(hint.email));
+    }
+    // Se não há placeholders, tenta anexar query string básica
+    if (!endpoint.includes('{') && !endpoint.includes('}')) {
+      const qs: string[] = [];
+      if (hint.id && !/\?.+/.test(endpoint)) qs.push(`id=${encodeURIComponent(hint.id)}`);
+      if (hint.email && !/\?.+/.test(endpoint)) qs.push(`email=${encodeURIComponent(hint.email)}`);
+      if (qs.length) endpoint += (endpoint.includes('?') ? '&' : '?') + qs.join('&');
+    }
+
+    const resp = await this.request<any>(endpoint);
+    if (!resp.success || !resp.data) return resp as ApiResponse<any>;
+    const raw = resp.data as any;
+    const item = Array.isArray(raw) ? raw[0] : (raw.data && Array.isArray(raw.data) ? raw.data[0] : (raw.item || raw));
+    if (!item) return { success: false, error: 'Perfil vazio' };
+    const phoneRaw = item.telefone || item.phone || item.celular || item.cel || item.tel;
+    const cpfRaw = item.cpf || item.documento || item.doc;
+    const cepRaw = item.cep || item.CEP || item.zip;
+    const addressRaw = item.endereco || item.logradouro || item.address || item.rua;
+    const numberRaw = item.numero || item.num_endereco || item.number || item.num;
+    const out: Partial<User> = {
+      phone: typeof phoneRaw === 'string' ? phoneRaw : (typeof phoneRaw === 'number' ? String(phoneRaw) : undefined),
+      cpf: typeof cpfRaw === 'string' ? cpfRaw : (typeof cpfRaw === 'number' ? String(cpfRaw) : undefined),
+      cep: typeof cepRaw === 'string' ? cepRaw : (typeof cepRaw === 'number' ? String(cepRaw) : undefined),
+      address: typeof addressRaw === 'string' ? addressRaw : undefined,
+      addressNumber: typeof numberRaw === 'string' ? numberRaw : (typeof numberRaw === 'number' ? String(numberRaw) : undefined),
+    };
+    return { success: true, data: out };
   }
 
   async logout(): Promise<ApiResponse> {
@@ -434,9 +493,14 @@ class ApiService {
     const customHeader = (env.VITE_VEHICLE_AUTH_HEADER as string) || '';
     const customValue = (env.VITE_VEHICLE_AUTH_VALUE as string) || '';
     if (customHeader && customValue) {
-      // Suporta placeholder {token}
-      const value = customValue.replace('{token}', this.token || '');
-      return { [customHeader]: value } as Record<string, string>;
+      // Suporta placeholder {token}; só injeta se houver token válido
+      if (customValue.includes('{token}')) {
+        if (!this.token) return {};
+        const value = customValue.replace('{token}', this.token);
+        return { [customHeader]: value } as Record<string, string>;
+      }
+      // Valor estático (ex.: x-api-key)
+      return { [customHeader]: customValue } as Record<string, string>;
     }
     // Sem custom, rely no Authorization padrão já incluído em request()
     return {};

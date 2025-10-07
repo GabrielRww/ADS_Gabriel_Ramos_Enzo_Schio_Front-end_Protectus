@@ -149,6 +149,27 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         cpf: rawCpf ? fmtCpf(String(rawCpf)) : (prev.cpf || ''),
       }));
       prefilledRef.current = true;
+      // Se faltar telefone/cpf, tenta buscar do backend (quando habilitado por env)
+      (async () => {
+        try {
+          if (!rawPhone || !rawCpf) {
+            const env: any = (import.meta as any).env || {};
+            const enabled = String(env.VITE_PROFILE_API) === 'true' && !!env.VITE_PROFILE_CLIENTE_GET_PATH;
+            if (!enabled) return;
+            const profile = await apiService.fetchClienteProfile({ id: user.id, email: user.email });
+            if (profile.success && profile.data) {
+              const p: any = profile.data;
+              const phoneFmt = p.phone ? fmtPhone(String(p.phone)) : '';
+              const cpfFmt = p.cpf ? fmtCpf(String(p.cpf)) : '';
+              setFormData((prev) => ({
+                ...prev,
+                telefone: prev.telefone || phoneFmt,
+                cpf: prev.cpf || cpfFmt,
+              }));
+            }
+          }
+        } catch {}
+      })();
     }
   }, [open, isAuthenticated, user]);
 
