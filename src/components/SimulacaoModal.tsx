@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useSimulation } from '../hooks/useApi';
-import { ChevronLeft, ChevronRight, Mail, User, FileText, Car, Home, Smartphone } from 'lucide-react';
+import { useSimulation } from '@/hooks/useApi';
+import { ChevronLeft, ChevronRight, User, FileText, Car, Home, Smartphone, CheckCircle } from 'lucide-react';
+import { apiService } from '@/lib/api';
 
 interface SimulacaoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  tipoSeguro: 'veiculo' | 'residencial' | 'celular';
+  tipoSeguro?: 'veiculo' | 'residencial' | 'celular';
 }
 
 interface FormData {
@@ -27,8 +28,9 @@ interface FormData {
   [key: string]: string;
 }
 
-export default function SimulacaoModal({ open, onOpenChange, tipoSeguro }: SimulacaoModalProps) {
+export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initialTipoSeguro }: SimulacaoModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
+  const [tipoSeguro, setTipoSeguro] = useState<'veiculo' | 'residencial' | 'celular' | ''>('');
   const [formData, setFormData] = useState<FormData>({
     nome: '',
     email: '',
@@ -37,8 +39,83 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro }: Simul
   });
   const { toast } = useToast();
   const { simulate, loading: simulationLoading } = useSimulation();
+  // Catálogo veicular dinâmico
+  const [marcas, setMarcas] = useState<Array<{ id: string | number; nome: string }>>([]);
+  const [modelos, setModelos] = useState<Array<{ id: string | number; nome: string }>>([]);
+  const [anos, setAnos] = useState<Array<{ id: string | number; nome: string }>>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState({ marcas: false, modelos: false, anos: false });
 
-  const totalSteps = 3;
+  useEffect(() => {
+    if (!open) return;
+    // Carregar marcas ao abrir o modal
+    (async () => {
+      try {
+        setLoadingCatalog((s) => ({ ...s, marcas: true }));
+        const resp = await apiService.getMarcas();
+        if (resp.success && Array.isArray(resp.data)) {
+          const mapped = resp.data.map((m: any) => ({ id: m.id ?? m.value ?? m.codigo ?? m.cod ?? m.sigla ?? String(m), nome: m.nome ?? m.label ?? m.descricao ?? m.name ?? String(m) }));
+          setMarcas(mapped);
+        } else {
+          setMarcas([]);
+        }
+      } catch (e) {
+        setMarcas([]);
+      } finally {
+        setLoadingCatalog((s) => ({ ...s, marcas: false }));
+      }
+    })();
+  }, [open]);
+
+  // Quando selecionar marca, carregar modelos e limpar dependentes
+  useEffect(() => {
+    const marca = formData.marca;
+    if (!marca) { setModelos([]); setAnos([]); return; }
+    (async () => {
+      try {
+        setLoadingCatalog((s) => ({ ...s, modelos: true }));
+        const resp = await apiService.getModelos({ marca: String(marca) });
+        if (resp.success && Array.isArray(resp.data)) {
+          const mapped = resp.data.map((m: any) => ({ id: m.id ?? m.value ?? m.codigo ?? m.cod ?? m.sigla ?? String(m), nome: m.nome ?? m.label ?? m.descricao ?? m.name ?? String(m) }));
+          setModelos(mapped);
+        } else {
+          setModelos([]);
+        }
+        // reset campos dependentes
+        setFormData((prev) => ({ ...prev, modelo: '', ano: '' }));
+        setAnos([]);
+      } catch (e) {
+        setModelos([]);
+      } finally {
+        setLoadingCatalog((s) => ({ ...s, modelos: false }));
+      }
+    })();
+  }, [formData.marca]);
+
+  // Quando selecionar modelo, carregar anos e limpar dependente
+  useEffect(() => {
+    const marca = formData.marca; const modelo = formData.modelo;
+    if (!marca || !modelo) { setAnos([]); return; }
+    (async () => {
+      try {
+        setLoadingCatalog((s) => ({ ...s, anos: true }));
+        const resp = await apiService.getAnos({ marca: String(marca), modelo: String(modelo) });
+        if (resp.success && Array.isArray(resp.data)) {
+          const mapped = resp.data.map((m: any) => ({ id: m.id ?? m.value ?? m.codigo ?? m.cod ?? m.sigla ?? String(m), nome: m.nome ?? m.label ?? m.descricao ?? m.name ?? String(m) }));
+          setAnos(mapped);
+        } else {
+          setAnos([]);
+        }
+        // reset ano
+        setFormData((prev) => ({ ...prev, ano: '' }));
+      } catch (e) {
+        setAnos([]);
+      } finally {
+        setLoadingCatalog((s) => ({ ...s, anos: false }));
+      }
+    })();
+  }, [formData.modelo]);
+
+  const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
 
   const handleInputChange = (field: string, value: string) => {
@@ -80,6 +157,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro }: Simul
       
       // Reset form and close modal
       setCurrentStep(1);
+      setTipoSeguro('');
       setFormData({
         nome: '',
         email: '',
@@ -96,22 +174,67 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro }: Simul
     }
   };
 
+  const segurosInfo = {
+    veiculo: {
+      title: 'Seguro Auto',
+      description: 'Proteção completa para seu veículo com assistência 24 horas',
+      coberturas: [
+        'Colisão, roubo e furto',
+        'Danos a terceiros',
+        'Assistência 24h com guincho',
+        'Carro reserva',
+        'Vidros e retrovisores',
+        'Proteção contra fenômenos naturais'
+      ]
+    },
+    residencial: {
+      title: 'Seguro Residencial',
+      description: 'Sua casa e família protegidas contra imprevistos',
+      coberturas: [
+        'Incêndio e raio',
+        'Roubo e furto de bens',
+        'Danos elétricos',
+        'Vazamento de água',
+        'Responsabilidade civil',
+        'Assistência residencial 24h'
+      ]
+    },
+    celular: {
+      title: 'Seguro Celular',
+      description: 'Seu smartphone protegido onde você estiver',
+      coberturas: [
+        'Quebra acidental de tela',
+        'Roubo e furto qualificado',
+        'Oxidação',
+        'Danos elétricos',
+        'Aparelho reserva',
+        'Cobertura nacional'
+      ]
+    }
+  };
+
   const getStepIcon = (step: number) => {
     switch (step) {
-      case 1: return <User className="h-5 w-5" />;
+      case 1: return <FileText className="h-5 w-5" />;
       case 2: return tipoSeguro === 'veiculo' ? <Car className="h-5 w-5" /> : 
                    tipoSeguro === 'residencial' ? <Home className="h-5 w-5" /> : 
                    <Smartphone className="h-5 w-5" />;
-      case 3: return <FileText className="h-5 w-5" />;
+      case 3: return <User className="h-5 w-5" />;
+      case 4: return tipoSeguro === 'veiculo' ? <Car className="h-5 w-5" /> : 
+                   tipoSeguro === 'residencial' ? <Home className="h-5 w-5" /> : 
+                   <Smartphone className="h-5 w-5" />;
       default: return null;
     }
   };
 
   const getStepTitle = (step: number) => {
     switch (step) {
-      case 1: return 'Dados Pessoais';
-      case 2: return `Dados do ${tipoSeguro === 'veiculo' ? 'Veículo' : tipoSeguro === 'residencial' ? 'Imóvel' : 'Celular'}`;
-      case 3: return 'Revisão e Envio';
+      case 1: return 'Tipo de Seguro';
+      case 2: return 'Coberturas';
+      case 3: return 'Dados Pessoais';
+      case 4: return tipoSeguro === 'veiculo' ? 'Dados do Veículo' : 
+                   tipoSeguro === 'residencial' ? 'Dados Residencial' : 
+                   'Dados Celular';
       default: return '';
     }
   };
@@ -119,6 +242,83 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro }: Simul
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
+        return (
+          <div className="space-y-4">
+            <div className="text-center mb-6">
+              <h3 className="text-lg font-semibold mb-2">Escolha o tipo de seguro</h3>
+              <p className="text-muted-foreground">Selecione o seguro que deseja simular</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card 
+                className={`cursor-pointer transition-all hover:shadow-lg ${tipoSeguro === 'veiculo' ? 'ring-2 ring-primary' : ''}`}
+                onClick={() => setTipoSeguro('veiculo')}
+              >
+                <CardContent className="p-6 text-center space-y-3">
+                  <Car className="h-12 w-12 mx-auto text-primary" />
+                  <h4 className="font-semibold">Seguro Auto</h4>
+                  <p className="text-sm text-muted-foreground">Proteção completa para seu veículo</p>
+                </CardContent>
+              </Card>
+              
+              <Card 
+                className={`cursor-pointer transition-all hover:shadow-lg ${tipoSeguro === 'residencial' ? 'ring-2 ring-primary' : ''}`}
+                onClick={() => setTipoSeguro('residencial')}
+              >
+                <CardContent className="p-6 text-center space-y-3">
+                  <Home className="h-12 w-12 mx-auto text-primary" />
+                  <h4 className="font-semibold">Seguro Residencial</h4>
+                  <p className="text-sm text-muted-foreground">Sua casa protegida</p>
+                </CardContent>
+              </Card>
+              
+              <Card 
+                className={`cursor-pointer transition-all hover:shadow-lg ${tipoSeguro === 'celular' ? 'ring-2 ring-primary' : ''}`}
+                onClick={() => setTipoSeguro('celular')}
+              >
+                <CardContent className="p-6 text-center space-y-3">
+                  <Smartphone className="h-12 w-12 mx-auto text-primary" />
+                  <h4 className="font-semibold">Seguro Celular</h4>
+                  <p className="text-sm text-muted-foreground">Proteja seu smartphone</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        );
+
+      case 2:
+        if (!tipoSeguro) return null;
+        const seguroInfo = segurosInfo[tipoSeguro];
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              {tipoSeguro === 'veiculo' && <Car className="h-16 w-16 mx-auto text-primary mb-4" />}
+              {tipoSeguro === 'residencial' && <Home className="h-16 w-16 mx-auto text-primary mb-4" />}
+              {tipoSeguro === 'celular' && <Smartphone className="h-16 w-16 mx-auto text-primary mb-4" />}
+              <h3 className="text-2xl font-bold mb-2">{seguroInfo.title}</h3>
+              <p className="text-muted-foreground">{seguroInfo.description}</p>
+            </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Coberturas Incluídas</CardTitle>
+                <CardDescription>Veja tudo que está protegido</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  {seguroInfo.coberturas.map((cobertura, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                      <span>{cobertura}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case 3:
         return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -166,52 +366,49 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro }: Simul
           </div>
         );
 
-      case 2:
+      case 4:
         if (tipoSeguro === 'veiculo') {
           return (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="marca">Marca *</Label>
-                  <Select onValueChange={(value) => handleInputChange('marca', value)}>
+                  <Select disabled={loadingCatalog.marcas} value={(formData.marca as any) || ''} onValueChange={(value) => handleInputChange('marca', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione a marca" />
+                      <SelectValue placeholder={loadingCatalog.marcas ? 'Carregando marcas...' : 'Selecione a marca'} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="honda">Honda</SelectItem>
-                      <SelectItem value="toyota">Toyota</SelectItem>
-                      <SelectItem value="volkswagen">Volkswagen</SelectItem>
-                      <SelectItem value="ford">Ford</SelectItem>
+                      {marcas.map((m) => (
+                        <SelectItem key={String(m.id)} value={String(m.id)}>{m.nome}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="modelo">Modelo *</Label>
-                  <Select onValueChange={(value) => handleInputChange('modelo', value)}>
+                  <Select disabled={!formData.marca || loadingCatalog.modelos} value={(formData.modelo as any) || ''} onValueChange={(value) => handleInputChange('modelo', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o modelo" />
+                      <SelectValue placeholder={!formData.marca ? 'Selecione a marca primeiro' : (loadingCatalog.modelos ? 'Carregando modelos...' : 'Selecione o modelo')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="civic">Civic</SelectItem>
-                      <SelectItem value="corolla">Corolla</SelectItem>
-                      <SelectItem value="gol">Gol</SelectItem>
-                      <SelectItem value="fiesta">Fiesta</SelectItem>
+                      {modelos.map((m) => (
+                        <SelectItem key={String(m.id)} value={String(m.id)}>{m.nome}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="ano">Ano *</Label>
-                  <Select onValueChange={(value) => handleInputChange('ano', value)}>
+                  <Select disabled={!formData.modelo || loadingCatalog.anos} value={(formData.ano as any) || ''} onValueChange={(value) => handleInputChange('ano', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Ano do veículo" />
+                      <SelectValue placeholder={!formData.modelo ? 'Selecione o modelo primeiro' : (loadingCatalog.anos ? 'Carregando anos...' : 'Ano do veículo')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="2024">2024</SelectItem>
-                      <SelectItem value="2023">2023</SelectItem>
-                      <SelectItem value="2022">2022</SelectItem>
-                      <SelectItem value="2021">2021</SelectItem>
+                      {anos.map((a) => (
+                        <SelectItem key={String(a.id)} value={String(a.id)}>{a.nome}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -360,64 +557,6 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro }: Simul
           );
         }
 
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Confirme seus dados</h3>
-              <p className="text-muted-foreground">
-                Revise as informações antes de enviar sua solicitação
-              </p>
-            </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Dados Pessoais</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div><strong>Nome:</strong> {formData.nome}</div>
-                <div><strong>Email:</strong> {formData.email}</div>
-                <div><strong>Telefone:</strong> {formData.telefone}</div>
-                <div><strong>CPF:</strong> {formData.cpf}</div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Dados do {tipoSeguro === 'veiculo' ? 'Veículo' : tipoSeguro === 'residencial' ? 'Imóvel' : 'Celular'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {tipoSeguro === 'veiculo' && (
-                  <>
-                    <div><strong>Marca/Modelo:</strong> {formData.marca} {formData.modelo}</div>
-                    <div><strong>Ano:</strong> {formData.ano}</div>
-                    <div><strong>Placa:</strong> {formData.placa}</div>
-                    <div><strong>CEP:</strong> {formData.cep}</div>
-                    <div><strong>Uso:</strong> {formData.uso}</div>
-                  </>
-                )}
-                {tipoSeguro === 'residencial' && (
-                  <>
-                    <div><strong>Tipo:</strong> {formData.tipoImovel}</div>
-                    <div><strong>Área:</strong> {formData.area} m²</div>
-                    <div><strong>CEP:</strong> {formData.cepResidencia}</div>
-                    <div><strong>Valor:</strong> {formData.valorImovel}</div>
-                  </>
-                )}
-                {tipoSeguro === 'celular' && (
-                  <>
-                    <div><strong>Marca/Modelo:</strong> {formData.marcaCelular} {formData.modeloCelular}</div>
-                    <div><strong>IMEI:</strong> {formData.imei}</div>
-                    <div><strong>Valor:</strong> {formData.valorAparelho}</div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        );
 
       default:
         return null;
@@ -430,7 +569,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro }: Simul
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {getStepIcon(currentStep)}
-            Simulação de Seguro {tipoSeguro === 'veiculo' ? 'Veicular' : tipoSeguro === 'residencial' ? 'Residencial' : 'Celular'}
+            Simulação de Seguro {tipoSeguro ? (tipoSeguro === 'veiculo' ? 'Veicular' : tipoSeguro === 'residencial' ? 'Residencial' : 'Celular') : ''}
           </DialogTitle>
         </DialogHeader>
 
@@ -495,9 +634,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro }: Simul
                 <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit}>
-                <Mail className="h-4 w-4 mr-2" />
-                Enviar Simulação
+              <Button onClick={handleSubmit} disabled={simulationLoading}>
+                {simulationLoading ? 'Enviando...' : 'Enviar Simulação'}
               </Button>
             )}
           </div>

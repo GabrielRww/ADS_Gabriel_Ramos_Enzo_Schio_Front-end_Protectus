@@ -22,8 +22,8 @@ export default function AdminDashboard() {
       color: "text-green-600"
     },
     {
-      title: "Rastreadores Ativos",
-      value: "734",
+      title: "Veículos Monitorados",
+      value: "128",
       change: "+5.1%",
       icon: MapPin,
       color: "text-purple-600"
@@ -35,7 +35,7 @@ export default function AdminDashboard() {
     { id: 2, type: "Apólice Aprovada", description: "Apólice #A001234 aprovada", time: "15 min atrás", status: "success" },
   // Removido item de incidente
     { id: 4, type: "Pagamento", description: "Pagamento recebido - R$ 450,00", time: "2h atrás", status: "success" },
-    { id: 5, type: "Rastreador", description: "Dispositivo RT001 offline", time: "3h atrás", status: "error" }
+    { id: 5, type: "Sistema", description: "Mapa atualizado", time: "3h atrás", status: "success" }
   ];
 
   const pendingTasks = [

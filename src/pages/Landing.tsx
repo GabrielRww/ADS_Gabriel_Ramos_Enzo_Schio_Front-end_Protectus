@@ -91,20 +91,45 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-background py-20 dark:from-primary/20 dark:via-primary/10 dark:to-background overflow-hidden">
+      <section className="relative bg-background py-20 overflow-hidden">
+        {/* Animated Grid Background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        
+        {/* Removed saturated glow effects */}
+        
+        {/* Animated flowing lines */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-32 w-72 h-72 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-32 w-72 h-72 bg-gradient-to-br from-accent/20 to-primary/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-20 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-shimmer"></div>
+          <div className="absolute top-40 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/15 to-transparent animate-shimmer" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute bottom-32 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-shimmer" style={{ animationDelay: '2s' }}></div>
+        </div>
+        
+        {/* Floating particles */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-[10%] w-2 h-2 bg-primary/40 rounded-full animate-float"></div>
+          <div className="absolute top-40 right-[15%] w-1.5 h-1.5 bg-accent/40 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute bottom-32 left-[20%] w-2 h-2 bg-primary/30 rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-1/3 right-[25%] w-1 h-1 bg-primary/40 rounded-full animate-float" style={{ animationDelay: '0.5s' }}></div>
+          <div className="absolute top-[60%] left-[30%] w-1.5 h-1.5 bg-primary/35 rounded-full animate-float" style={{ animationDelay: '3s' }}></div>
+          <div className="absolute bottom-[20%] right-[35%] w-1 h-1 bg-accent/30 rounded-full animate-float" style={{ animationDelay: '2.5s' }}></div>
+        </div>
+        
+        {/* Subtle wave effect */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 opacity-10">
+          <div className="absolute bottom-0 left-0 right-0 h-full bg-gradient-to-t from-primary/20 to-transparent"></div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8">
+            <div className="space-y-8 animate-slide-up">
               <div>
-                <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
+                <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
                   Proteção que você{' '}
-                  <span className="text-primary">confia</span>
+                  <span className="relative inline-block">
+                    <span className="text-primary animate-glow-pulse">confia</span>
+                    <span className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-tech rounded-full"></span>
+                  </span>
                 </h1>
-                <p className="text-xl text-muted-foreground mb-8">
+                <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
                   Seguros personalizados para cada momento da sua vida. 
                   Simule, contrate e gerencie tudo online de forma simples e segura.
                 </p>
@@ -113,44 +138,49 @@ export default function Landing() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button 
                   size="lg" 
-                  className="bg-gradient-primary hover:bg-primary-hover shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 animate-bounce-subtle"
+                  className="relative bg-gradient-tech hover:scale-105 shadow-glow hover:shadow-glow-lg transition-all duration-300 group overflow-hidden"
                   onClick={() => {
-                    setTipoSeguro('veiculo');
                     setModalOpen(true);
                   }}
                 >
-                  Simular Agora
+                  <span className="relative z-10 font-semibold">Simular Agora</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
                 </Button>
               </div>
 
               <div className="flex items-center space-x-8 pt-8">
-                <div className="text-center group">
-                  <div className="text-3xl font-bold text-primary group-hover:scale-110 transition-transform">50k+</div>
+                <div className="text-center group cursor-default">
+                  <div className="text-3xl font-bold text-foreground group-hover:text-primary group-hover:scale-110 transition-all">50k+</div>
                   <div className="text-sm text-muted-foreground">Clientes</div>
                 </div>
-                <div className="w-px h-8 bg-border"></div>
-                <div className="text-center group">
-                  <div className="text-3xl font-bold text-primary group-hover:scale-110 transition-transform">98%</div>
+                <div className="w-px h-8 bg-gradient-to-b from-transparent via-border to-transparent"></div>
+                <div className="text-center group cursor-default">
+                  <div className="text-3xl font-bold text-foreground group-hover:text-primary group-hover:scale-110 transition-all">98%</div>
                   <div className="text-sm text-muted-foreground">Satisfação</div>
                 </div>
-                <div className="w-px h-8 bg-border"></div>
-                <div className="text-center group">
-                  <div className="text-3xl font-bold text-primary group-hover:scale-110 transition-transform">24h</div>
+                <div className="w-px h-8 bg-gradient-to-b from-transparent via-border to-transparent"></div>
+                <div className="text-center group cursor-default">
+                  <div className="text-3xl font-bold text-foreground group-hover:text-primary group-hover:scale-110 transition-all">24h</div>
                   <div className="text-sm text-muted-foreground">Suporte</div>
                 </div>
               </div>
             </div>
             
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 rounded-2xl blur-3xl"></div>
-              <img 
-                src={heroImage} 
-                alt="Proteção e segurança" 
-                className="relative rounded-2xl shadow-2xl w-full border border-border/50"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/30 via-transparent to-transparent rounded-2xl"></div>
-              <div className="absolute top-4 right-4 w-16 h-16 bg-primary/20 rounded-full blur-xl animate-pulse"></div>
-              <div className="absolute bottom-4 left-4 w-12 h-12 bg-accent/20 rounded-full blur-lg animate-pulse delay-1000"></div>
+            <div className="relative animate-scale-in">
+              {/* Main image container - removed green overlays */}
+              <div className="relative rounded-2xl overflow-hidden border border-border shadow-xl hover:shadow-2xl transition-shadow duration-500">
+                <img 
+                  src={heroImage} 
+                  alt="Proteção e segurança" 
+                  className="w-full"
+                />
+                
+                {/* Tech frame effect - subtle corners only */}
+                <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-primary/50 animate-pulse"></div>
+                <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-primary/50 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-primary/50 animate-pulse" style={{ animationDelay: '1s' }}></div>
+                <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-primary/50 animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+              </div>
             </div>
           </div>
         </div>
@@ -170,27 +200,32 @@ export default function Landing() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {services.map((service, index) => (
-              <Card key={index} className="relative overflow-hidden hover:shadow-xl transition-all duration-300 group border-border/50 hover:border-primary/20 bg-gradient-to-br from-card to-card/80">
-                <CardContent className="p-6">
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary-hover rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <service.icon className="h-6 w-6 text-primary-foreground" />
+              <Card key={index} className="relative overflow-hidden hover:shadow-glow transition-all duration-300 group border-primary/10 hover:border-primary/30 bg-card/50 backdrop-blur-sm">
+                {/* Animated gradient border effect */}
+                <div className="absolute inset-0 bg-gradient-tech opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                
+                {/* Glow effect */}
+                <div className="absolute -inset-0.5 bg-gradient-tech opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300"></div>
+                
+                <CardContent className="relative p-6">
+                  <div className="w-14 h-14 bg-gradient-tech rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-glow">
+                    <service.icon className="h-7 w-7 text-primary-foreground" />
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+                  <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
                     {service.title}
                   </h3>
-                  <p className="text-muted-foreground mb-4">
+                  <p className="text-muted-foreground mb-4 leading-relaxed">
                     {service.description}
                   </p>
                   <ul className="space-y-2">
                     {service.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center text-sm">
-                        <CheckCircle className="h-4 w-4 text-success mr-2 flex-shrink-0" />
-                        {feature}
+                      <li key={idx} className="flex items-center text-sm group/item">
+                        <CheckCircle className="h-4 w-4 text-primary mr-2 flex-shrink-0 group-hover/item:scale-110 transition-transform" />
+                        <span className="group-hover/item:text-foreground transition-colors">{feature}</span>
                       </li>
                     ))}
                   </ul>
                 </CardContent>
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </Card>
             ))}
           </div>
@@ -230,28 +265,40 @@ export default function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-primary relative overflow-hidden">
+      <section className="py-20 bg-gradient-tech relative overflow-hidden">
+        {/* Animated background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        
         <div className="absolute inset-0">
-          <div className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl animate-pulse"></div>
-          <div className="absolute bottom-10 right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl animate-pulse delay-1000"></div>
-          <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-white/10 rounded-full blur-lg animate-pulse delay-500"></div>
+          <div className="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl animate-glow-pulse"></div>
+          <div className="absolute bottom-10 right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl animate-glow-pulse" style={{ animationDelay: '1.5s' }}></div>
+          <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-white/10 rounded-full blur-2xl animate-float"></div>
         </div>
+        
+        {/* Additional animated elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-[20%] right-[10%] w-3 h-3 bg-white/30 rounded-full animate-float" style={{ animationDelay: '0.5s' }}></div>
+          <div className="absolute bottom-[30%] left-[15%] w-2 h-2 bg-white/30 rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-[60%] right-[20%] w-2.5 h-2.5 bg-white/30 rounded-full animate-float" style={{ animationDelay: '3s' }}></div>
+        </div>
+        
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="animate-bounce-subtle">
-            <Shield className="h-16 w-16 text-primary-foreground mx-auto mb-6" />
+          <div className="animate-float mb-6">
+            <div className="inline-flex p-4 bg-white/10 backdrop-blur-sm rounded-full">
+              <Shield className="h-16 w-16 text-primary-foreground drop-shadow-glow" />
+            </div>
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
+          <h2 className="text-3xl md:text-5xl font-bold text-primary-foreground mb-4 drop-shadow-lg">
             Pronto para se proteger?
           </h2>
-          <p className="text-xl text-primary-foreground/90 mb-8">
-            Faça uma simulação gratuita em menos de 2 minutos
+          <p className="text-xl text-primary-foreground/95 mb-8 max-w-2xl mx-auto leading-relaxed">
+            Faça uma simulação gratuita em menos de 2 minutos e descubra a proteção ideal para você
           </p>
           <Button 
             size="lg" 
             variant="secondary" 
-            className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            className="shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 text-lg px-8 py-6 font-semibold"
             onClick={() => {
-              setTipoSeguro('veiculo');
               setModalOpen(true);
             }}
           >
@@ -317,7 +364,6 @@ export default function Landing() {
       <SimulacaoModal 
         open={modalOpen}
         onOpenChange={setModalOpen}
-        tipoSeguro={tipoSeguro}
       />
     </div>
   );

@@ -21,12 +21,7 @@ export default function AdminClientes() {
   const [isLoading, setIsLoading] = useState(false);
   const [funcionarios, setFuncionarios] = useState<any[]>([]);
   const [novo, setNovo] = useState({
-    nome: "",
     email: "",
-    documento: "",
-    telefone: "",
-    cidade: "",
-    status: "ativo",
     senha: "",
     indGerente: 0,
   });
@@ -142,12 +137,7 @@ export default function AdminClientes() {
     setIsSaving(true);
     try {
       const payload = {
-        nome: novo.nome,
         email: novo.email,
-        telefone: novo.telefone.replace(/\D/g, ''),
-        cpf: novo.documento.replace(/\D/g, ''),
-        cidade: novo.cidade,
-        status: novo.status,
         senha: novo.senha,
         // Envia na forma camelCase solicitada: IndGerente (==1)
         IndGerente: Number(novo.indGerente) === 1 ? 1 : 0,
@@ -206,85 +196,42 @@ export default function AdminClientes() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestão de Clientes</h1>
-          <p className="text-muted-foreground">
-            Gerencie todos os clientes da Protectus Seguros
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">Funcionários</h1>
+          <p className="text-muted-foreground">Gerencie a equipe da Protectus Seguros</p>
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
-              Adicionar Cliente
+              Adicionar Funcionário
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Novo Funcionário</DialogTitle>
-              <DialogDescription>Cadastre um funcionário (marque gerente para acesso à área admin)</DialogDescription>
+              <DialogDescription>Informe apenas e-mail, senha e se é gerente</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome Completo</Label>
-                  <Input id="name" placeholder="João Silva" value={novo.nome} onChange={(e)=>setNovo({...novo, nome:e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="document">CPF/CNPJ</Label>
-                  <Input id="document" placeholder="123.456.789-00" value={novo.documento} onChange={(e)=>setNovo({...novo, documento:e.target.value})} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" type="email" placeholder="joao@email.com" value={novo.email} onChange={(e)=>setNovo({...novo, email:e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input id="phone" placeholder="(11) 99999-9999" value={novo.telefone} onChange={(e)=>setNovo({...novo, telefone:e.target.value})} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="city">Cidade</Label>
-                  <Input id="city" placeholder="São Paulo" value={novo.cidade} onChange={(e)=>setNovo({...novo, cidade:e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={novo.status} onValueChange={(v)=>setNovo({...novo, status:v})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ativo">Ativo</SelectItem>
-                      <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="inativo">Inativo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="senha">Senha</Label>
-                  <Input id="senha" type="password" placeholder="Defina uma senha" value={novo.senha} onChange={(e)=>setNovo({...novo, senha:e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="gerente">Gerente</Label>
-                  <Select value={String(novo.indGerente)} onValueChange={(v)=>setNovo({...novo, indGerente:Number(v)})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Não</SelectItem>
-                      <SelectItem value="1">Sim</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input id="email" type="email" placeholder="nome@protectus.com" value={novo.email} onChange={(e)=>setNovo({...novo, email:e.target.value})} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="notes">Observações</Label>
-                <Textarea id="notes" placeholder="Observações sobre o cliente..." />
+                <Label htmlFor="senha">Senha</Label>
+                <Input id="senha" type="password" placeholder="Defina uma senha" value={novo.senha} onChange={(e)=>setNovo({...novo, senha:e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gerente">Gerente</Label>
+                <Select value={String(novo.indGerente)} onValueChange={(v)=>setNovo({...novo, indGerente:Number(v)})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Não</SelectItem>
+                    <SelectItem value="1">Sim</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>
@@ -297,42 +244,27 @@ export default function AdminClientes() {
         </Dialog>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros básicos */}
       <Card>
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
-          <CardDescription>Use os filtros para encontrar clientes específicos</CardDescription>
+          <CardDescription>Busque por e-mail</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 md:flex-row md:items-end">
             <div className="space-y-2 flex-1">
-              <Label htmlFor="search">Buscar Cliente</Label>
+              <Label htmlFor="search">Buscar Funcionário</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search"
-                  placeholder="Nome, e-mail ou CPF..."
+                  placeholder="E-mail..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="ativo">Ativo</SelectItem>
-                  <SelectItem value="pendente">Pendente</SelectItem>
-                  <SelectItem value="inativo">Inativo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button variant="outline">Limpar Filtros</Button>
           </div>
         </CardContent>
       </Card>

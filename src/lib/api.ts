@@ -409,6 +409,24 @@ class ApiService {
       body: JSON.stringify(simulationData),
     });
   }
+
+  // Catálogo de veículos (para simulação): marcas, modelos, anos
+  async getMarcas(): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>('/marcas');
+  }
+
+  async getModelos(params: { marca?: string } = {}): Promise<ApiResponse<any[]>> {
+    const qs = params.marca ? `?marca=${encodeURIComponent(params.marca)}` : '';
+    return this.request<any[]>(`/modelos${qs}`);
+  }
+
+  async getAnos(params: { marca?: string; modelo?: string } = {}): Promise<ApiResponse<any[]>> {
+    const p: string[] = [];
+    if (params.marca) p.push(`marca=${encodeURIComponent(params.marca)}`);
+    if (params.modelo) p.push(`modelo=${encodeURIComponent(params.modelo)}`);
+    const qs = p.length ? `?${p.join('&')}` : '';
+    return this.request<any[]>(`/anos${qs}`);
+  }
 }
 
 export const apiService = new ApiService();
