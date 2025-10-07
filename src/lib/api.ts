@@ -142,11 +142,15 @@ class ApiService {
     const role: User['role'] = isManager
       ? 'gerente'
       : (((rawUser as any)?.role as any) === 'funcionario' ? 'funcionario' : 'cliente');
+    const phoneRaw = (rawUser as any)?.telefone || (rawUser as any)?.phone || (rawUser as any)?.celular || (rawUser as any)?.cel || (rawUser as any)?.tel;
+    const cpfRaw = (rawUser as any)?.cpf || (rawUser as any)?.documento || (rawUser as any)?.doc;
     const user: User = {
       id: (rawUser as any)?.id || (rawUser as any)?.cod_usuario || (rawUser as any)?.cod_cliente || credentials.email,
       name: (rawUser as any)?.name || (rawUser as any)?.nome || (rawUser as any)?.des_usuario || credentials.email.split('@')[0],
       email: (rawUser as any)?.email || credentials.email,
       role,
+      phone: typeof phoneRaw === 'string' ? phoneRaw : (typeof phoneRaw === 'number' ? String(phoneRaw) : undefined),
+      cpf: typeof cpfRaw === 'string' ? cpfRaw : (typeof cpfRaw === 'number' ? String(cpfRaw) : undefined),
     };
     return { success: true, data: { user, token } };
   }
@@ -177,11 +181,15 @@ class ApiService {
 
     // Muitas APIs não retornam token no cadastro; normalizamos o usuário básico
     const created = resp.data || {};
+    const phoneRaw = created.telefone || created.phone || userData.phone;
+    const cpfRaw = created.cpf || created.documento || userData.cpf;
     const user: User = {
       id: created.id || created.cod_usuario || created.cod_cliente || created.cod || created.email,
       name: created.nome || created.des_usuario || userData.name,
       email: created.email || userData.email,
       role: (created.role || userData.role || 'cliente') as User['role'],
+      phone: typeof phoneRaw === 'string' ? phoneRaw : (typeof phoneRaw === 'number' ? String(phoneRaw) : undefined),
+      cpf: typeof cpfRaw === 'string' ? cpfRaw : (typeof cpfRaw === 'number' ? String(cpfRaw) : undefined),
     };
     const token = created.access_token || created.token; // se existir
     return { success: true, data: { user, token } };

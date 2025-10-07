@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +41,9 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   });
   const { toast } = useToast();
   const { simulate, loading: simulationLoading } = useSimulation();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
+  const navigate = useNavigate();
+  const prefilledRef = useRef(false);
 
   // Helper para normalizar opções { id, nome } evitando [object Object]
   const toOption = (m: any) => {
@@ -111,6 +114,43 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   const [modelos, setModelos] = useState<Array<{ id: string | number; nome: string }>>([]);
   const [anos, setAnos] = useState<Array<{ id: string | number; nome: string }>>([]);
   const [loadingCatalog, setLoadingCatalog] = useState({ marcas: false, modelos: false, anos: false });
+
+  useEffect(() => {
+    // Enforce auth: se abrir sem estar logado, redireciona para login
+    if (open && !isAuthenticated) {
+      toast({ title: 'Faça login para simular', description: 'Você precisa estar autenticado para realizar a simulação.', variant: 'destructive' });
+      onOpenChange(false);
+      navigate('/login', { replace: false });
+      return;
+    }
+    // Reset flag ao fechar
+    if (!open) {
+      prefilledRef.current = false;
+    }
+  }, [open, isAuthenticated]);
+
+  // Prefill de dados pessoais quando autenticado e modal abrir
+  useEffect(() => {
+    if (open && isAuthenticated && user && !prefilledRef.current) {
+      const rawPhone = (user as any).phone || (user as any).telefone || '';
+      const rawCpf = (user as any).cpf || '';
+      const onlyDigits = (v: string) => v.replace(/\D/g, '');
+      const fmtPhone = (v: string) => {
+        const d = onlyDigits(v).slice(0, 11);
+        if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').trim();
+        return d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim();
+      };
+      const fmtCpf = (v: string) => onlyDigits(v).slice(0, 11).replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4').trim();
+      setFormData((prev) => ({
+        ...prev,
+        nome: user.name || prev.nome || '',
+        email: user.email || prev.email || '',
+        telefone: rawPhone ? fmtPhone(String(rawPhone)) : (prev.telefone || ''),
+        cpf: rawCpf ? fmtCpf(String(rawCpf)) : (prev.cpf || ''),
+      }));
+      prefilledRef.current = true;
+    }
+  }, [open, isAuthenticated, user]);
 
   useEffect(() => {
     if (!open || tipoSeguro !== 'veiculo') return;

@@ -8,11 +8,15 @@ import heroImage from '@/assets/hero-insurance.jpg';
 import protectusLogo from '@/assets/protectus-logo-complete.png';
 import protectusIcon from '@/assets/protectus-icon.png';
 import SimulacaoModal from '@/components/SimulacaoModal';
+import { useAuthStore } from '@/store/authStore';
+import { useNavigate } from 'react-router-dom';
 
 export default function Landing() {
   const { theme, setTheme } = useTheme();
   const [modalOpen, setModalOpen] = useState(false);
   const [tipoSeguro, setTipoSeguro] = useState<'veiculo' | 'residencial' | 'celular'>('veiculo');
+  const { isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
   const services = [
     {
       icon: Car,
@@ -140,7 +144,11 @@ export default function Landing() {
                   size="lg" 
                   className="relative bg-gradient-tech hover:scale-105 shadow-glow hover:shadow-glow-lg transition-all duration-300 group overflow-hidden"
                   onClick={() => {
-                    setModalOpen(true);
+                    if (!isAuthenticated) {
+                      navigate('/login');
+                    } else {
+                      setModalOpen(true);
+                    }
                   }}
                 >
                   <span className="relative z-10 font-semibold">Simular Agora</span>
@@ -299,7 +307,11 @@ export default function Landing() {
             variant="secondary" 
             className="shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 text-lg px-8 py-6 font-semibold"
             onClick={() => {
-              setModalOpen(true);
+              if (!isAuthenticated) {
+                navigate('/login');
+              } else {
+                setModalOpen(true);
+              }
             }}
           >
             Simular Meu Seguro
