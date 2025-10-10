@@ -409,11 +409,63 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
     
     (async () => {
       try {
-        // Simula busca na tabela FIPE - aqui você pode implementar uma API real
         const marcaNome = marcas.find((m) => String(m.id) === String(marca))?.nome || '';
         const modeloNome = modelos.find((m) => String(m.id) === String(modelo))?.nome || '';
         
-        // Por enquanto, vamos simular valores baseados no ano
+        // Mostrar loading
+        toast({
+          title: "Consultando FIPE...",
+          description: "Buscando valor atualizado do veículo.",
+        });
+
+        // Buscar valor real da FIPE
+        const fipeResponse = await apiService.getValorFipe({
+          marca: marcaNome,
+          modelo: modeloNome,
+          ano: ano
+        });
+        
+        if (fipeResponse.success && fipeResponse.data?.valor) {
+          const valorFipe = fipeResponse.data.valor;
+          setFormData((prev) => ({ ...prev, valorVeiculo: valorFipe }));
+          
+          toast({
+            title: "Valor FIPE encontrado!",
+            description: `${marcaNome} ${modeloNome} ${ano}: ${valorFipe}`,
+          });
+        } else {
+          // Fallback para simulação se FIPE não estiver disponível
+          console.warn('FIPE não disponível, usando simulação:', fipeResponse.error);
+          
+          let valorEstimado = '';
+          const anoInt = parseInt(ano);
+          const idadeVeiculo = new Date().getFullYear() - anoInt;
+          
+          if (idadeVeiculo <= 2) {
+            valorEstimado = 'R$ 65.000';
+          } else if (idadeVeiculo <= 5) {
+            valorEstimado = 'R$ 45.000';
+          } else if (idadeVeiculo <= 10) {
+            valorEstimado = 'R$ 25.000';
+          } else {
+            valorEstimado = 'R$ 15.000';
+          }
+          
+          setFormData((prev) => ({ ...prev, valorVeiculo: valorEstimado }));
+          
+          toast({
+            title: "Valor estimado calculado",
+            description: `${marcaNome} ${modeloNome} ${ano}: ${valorEstimado} (FIPE indisponível)`,
+            variant: "default"
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao buscar valor do veículo:', error);
+        
+        const marcaNome = marcas.find((m) => String(m.id) === String(marca))?.nome || '';
+        const modeloNome = modelos.find((m) => String(m.id) === String(modelo))?.nome || '';
+        
+        // Fallback para simulação em caso de erro
         let valorEstimado = '';
         const anoInt = parseInt(ano);
         const idadeVeiculo = new Date().getFullYear() - anoInt;
@@ -431,11 +483,10 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         setFormData((prev) => ({ ...prev, valorVeiculo: valorEstimado }));
         
         toast({
-          title: "Valor FIPE carregado",
-          description: `${marcaNome} ${modeloNome} ${ano}: ${valorEstimado}`,
+          title: "Valor estimado calculado",
+          description: `${marcaNome} ${modeloNome} ${ano}: ${valorEstimado} (estimativa)`,
+          variant: "default"
         });
-      } catch (error) {
-        console.error('Erro ao buscar valor FIPE:', error);
       }
     })();
   }, [formData.marca, formData.modelo, formData.ano, tipoSeguro, isAuthenticated]);
@@ -680,8 +731,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               <p className="text-muted-foreground">Selecione o seguro que deseja simular</p>
               <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  ✨ <strong>Novidades:</strong> Agora buscamos automaticamente dados de veículos e celulares do nosso catálogo, 
-                  incluindo valores estimados baseados na tabela FIPE para carros e preços de mercado para celulares!
+                  ✨ <strong>Novidades:</strong> Agora consultamos automaticamente a tabela FIPE oficial para 
+                  buscar valores reais dos veículos, além do nosso catálogo completo de marcas, modelos e celulares!
                 </p>
               </div>
             </div>
@@ -867,12 +918,12 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     id="valor-veiculo"
                     value={formData.valorVeiculo || ''}
                     onChange={(e) => handleInputChange('valorVeiculo', e.target.value)}
-                    placeholder="R$ 45.000"
+                    placeholder="Consultando FIPE..."
                     readOnly
                     className="bg-muted"
                   />
                   <p className="text-xs text-muted-foreground">
-                    * Valor será calculado automaticamente baseado na tabela FIPE
+                    * Valor consultado automaticamente na tabela FIPE oficial
                   </p>
                 </div>
                 

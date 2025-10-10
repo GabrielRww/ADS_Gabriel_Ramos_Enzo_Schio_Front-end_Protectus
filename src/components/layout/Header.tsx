@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
-import { Notifications } from './Notifications';
 import SimulacaoModal from '../SimulacaoModal';
 
 interface NavigationItem {
@@ -107,9 +106,6 @@ export function Header() {
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Alternar tema</span>
             </Button>
-
-            {/* Notifications */}
-            <Notifications />
 
             {/* User Dropdown */}
             <DropdownMenu>

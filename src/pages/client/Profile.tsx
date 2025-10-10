@@ -15,6 +15,10 @@ export function ClientProfile() {
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Estado para detectar mudanças não salvas
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   // Debug completo ao montar
   useEffect(() => {
@@ -53,36 +57,133 @@ export function ClientProfile() {
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(user?.avatar);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Função para atualizar formData e detectar mudanças
+  const updateFormData = (updates: Partial<typeof formData>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+    setHasUnsavedChanges(true);
+  };
+
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || isSaving) return;
+
+    // Validação básica dos campos obrigatórios
+    if (!formData.name.trim()) {
+      toast({
+        title: 'Nome obrigatório',
+        description: 'Por favor, preencha seu nome completo.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      toast({
+        title: 'E-mail obrigatório',
+        description: 'Por favor, preencha seu e-mail.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validação do formato do email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: 'E-mail inválido',
+        description: 'Por favor, digite um e-mail válido.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validação do CPF (se preenchido)
+    if (formData.cpfCnpj) {
+      const cpfDigits = onlyDigits(formData.cpfCnpj);
+      if (cpfDigits.length !== 11) {
+        toast({
+          title: 'CPF inválido',
+          description: 'O CPF deve ter 11 dígitos.',
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    // Validação do telefone (se preenchido)
+    if (formData.phone) {
+      const phoneDigits = onlyDigits(formData.phone);
+      if (phoneDigits.length < 10) {
+        toast({
+          title: 'Telefone inválido',
+          description: 'O telefone deve ter pelo menos 10 dígitos.',
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    setIsSaving(true);
+
     // Monta payload mínimo esperado pelo backend; limpa campos numéricos
     const payload: Partial<User> & { telefone?: string; cpf?: string } = {
-      name: formData.name,
-      email: formData.email,
-      address: formData.address,
-      phone: formData.phone?.replace(/\D/g, ''),
-      cpf: formData.cpfCnpj?.replace(/\D/g, ''),
+      name: formData.name.trim(),
+      email: formData.email.trim().toLowerCase(),
+      address: formData.address.trim(),
+      phone: formData.phone?.replace(/\D/g, '') || undefined,
+      cpf: formData.cpfCnpj?.replace(/\D/g, '') || undefined,
       avatar: avatarUrl,
     };
 
+    // Remove campos vazios do payload
+    Object.keys(payload).forEach(key => {
+      if (payload[key as keyof typeof payload] === '' || payload[key as keyof typeof payload] === undefined) {
+        delete payload[key as keyof typeof payload];
+      }
+    });
+
     // Atualização local imediata para UX
     const updated: User = { ...user, ...payload } as User;
-    try { localStorage.setItem('protectus-user', JSON.stringify(updated)); } catch {}
-    // Se existir backend habilitado, tenta enviar
-    const resp = await apiService.updateProfile(user.id, payload);
-    if (resp.success) {
-      // Se vier user do backend, usa ele; senão mantém o local
-      const finalUser = (resp.data as User) || updated;
-      try { localStorage.setItem('protectus-user', JSON.stringify(finalUser)); } catch {}
-      // atualiza store para refletir no header imediatamente
-      useAuthStore.setState({ user: finalUser });
-      toast({ title: 'Perfil atualizado', description: 'Suas informações foram salvas com sucesso.' });
-      setIsEditing(false);
-    } else {
-      // Mantém alteração local e avisa que ficou offline
-      useAuthStore.setState({ user: updated });
-      toast({ title: 'Alterações salvas localmente', description: 'Quando a API estiver disponível, faremos a sincronização.' });
-      setIsEditing(false);
+    
+    try {
+      localStorage.setItem('protectus-user', JSON.stringify(updated));
+      
+      // Se existir backend habilitado, tenta enviar
+      const resp = await apiService.updateProfile(user.id, payload);
+      
+      if (resp.success) {
+        // Se vier user do backend, usa ele; senão mantém o local
+        const finalUser = (resp.data as User) || updated;
+        localStorage.setItem('protectus-user', JSON.stringify(finalUser));
+        
+        // atualiza store para refletir no header imediatamente
+        useAuthStore.setState({ user: finalUser });
+        
+        toast({ 
+          title: 'Perfil atualizado com sucesso!', 
+          description: 'Suas informações foram salvas e sincronizadas.' 
+        });
+        setIsEditing(false);
+        setHasUnsavedChanges(false);
+      } else {
+        // Mantém alteração local e avisa que ficou offline
+        useAuthStore.setState({ user: updated });
+        toast({ 
+          title: 'Alterações salvas localmente', 
+          description: 'Quando a API estiver disponível, faremos a sincronização.',
+          variant: 'default'
+        });
+        setIsEditing(false);
+        setHasUnsavedChanges(false);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar perfil:', error);
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Ocorreu um erro ao salvar suas informações. Tente novamente.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -96,6 +197,8 @@ export function ClientProfile() {
     });
     setAvatarUrl(user?.avatar);
     setIsEditing(false);
+    setIsSaving(false);
+    setHasUnsavedChanges(false);
   };
 
   const onPickAvatar = () => fileInputRef.current?.click();
@@ -146,6 +249,7 @@ export function ClientProfile() {
         address: addressComposed
       });
       setAvatarUrl(user?.avatar);
+      setHasUnsavedChanges(false);
     }
   }, [user]);
 
@@ -153,7 +257,14 @@ export function ClientProfile() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Meu Perfil</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Meu Perfil
+            {hasUnsavedChanges && isEditing && (
+              <span className="ml-2 text-sm font-normal text-orange-600 dark:text-orange-400">
+                (alterações não salvas)
+              </span>
+            )}
+          </h1>
           <p className="text-muted-foreground">Gerencie suas informações pessoais</p>
         </div>
         
@@ -164,11 +275,11 @@ export function ClientProfile() {
           </Button>
         ) : (
           <div className="flex gap-2">
-            <Button onClick={handleSave} className="gap-2">
+            <Button onClick={handleSave} disabled={isSaving} className="gap-2">
               <Save className="h-4 w-4" />
-              Salvar
+              {isSaving ? 'Salvando...' : 'Salvar'}
             </Button>
-            <Button variant="outline" onClick={handleCancel} className="gap-2">
+            <Button variant="outline" onClick={handleCancel} disabled={isSaving} className="gap-2">
               <X className="h-4 w-4" />
               Cancelar
             </Button>
@@ -231,11 +342,13 @@ export function ClientProfile() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => updateFormData({ name: e.target.value })}
+                  placeholder="Digite seu nome completo"
+                  required
                 />
               ) : (
                 <p className="text-sm text-foreground bg-muted p-3 rounded-md">
-                  {formData.name}
+                  {formData.name || 'Não informado'}
                 </p>
               )}
             </div>
@@ -250,11 +363,13 @@ export function ClientProfile() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => updateFormData({ email: e.target.value })}
+                  placeholder="seu@email.com"
+                  required
                 />
               ) : (
                 <p className="text-sm text-foreground bg-muted p-3 rounded-md">
-                  {formData.email}
+                  {formData.email || 'Não informado'}
                 </p>
               )}
             </div>
@@ -268,11 +383,16 @@ export function ClientProfile() {
                 <Input
                   id="phone"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => {
+                    const formatted = fmtPhone(e.target.value);
+                    updateFormData({ phone: formatted });
+                  }}
+                  placeholder="(11) 99999-9999"
+                  maxLength={15}
                 />
               ) : (
                 <p className="text-sm text-foreground bg-muted p-3 rounded-md">
-                  {formData.phone}
+                  {formData.phone || 'Não informado'}
                 </p>
               )}
             </div>
@@ -286,11 +406,16 @@ export function ClientProfile() {
                 <Input
                   id="cpfCnpj"
                   value={formData.cpfCnpj}
-                  onChange={(e) => setFormData({ ...formData, cpfCnpj: e.target.value })}
+                  onChange={(e) => {
+                    const formatted = fmtCpf(e.target.value);
+                    updateFormData({ cpfCnpj: formatted });
+                  }}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
                 />
               ) : (
                 <p className="text-sm text-foreground bg-muted p-3 rounded-md">
-                  {formData.cpfCnpj}
+                  {formData.cpfCnpj || 'Não informado'}
                 </p>
               )}
             </div>
@@ -304,11 +429,12 @@ export function ClientProfile() {
                 <Input
                   id="address"
                   value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  onChange={(e) => updateFormData({ address: e.target.value })}
+                  placeholder="Rua, número, complemento"
                 />
               ) : (
                 <p className="text-sm text-foreground bg-muted p-3 rounded-md">
-                  {formData.address}
+                  {formData.address || 'Não informado'}
                 </p>
               )}
             </div>
@@ -334,18 +460,6 @@ export function ClientProfile() {
             </div>
             <Button variant="outline" size="sm">
               Alterar
-            </Button>
-          </div>
-          
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <h4 className="font-medium">Notificações por E-mail</h4>
-              <p className="text-sm text-muted-foreground">
-                Receber atualizações sobre suas apólices
-              </p>
-            </div>
-            <Button variant="outline" size="sm">
-              Configurar
             </Button>
           </div>
         </CardContent>

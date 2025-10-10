@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiService, type User } from '@/lib/api';
+import { parseApiError, type ErrorInfo } from '@/utils/errorMessages';
 
 export type UserRole = 'cliente' | 'funcionario' | 'gerente';
 
@@ -20,6 +21,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  errors: ErrorInfo[];
   login: (email: string, password: string, roleHint?: 'cliente' | 'funcionario') => Promise<boolean>;
   logout: () => Promise<void>;
   register: (userData: RegisterData) => Promise<boolean>;
@@ -34,6 +36,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      errors: [],
 
       login: async (email: string, password: string, roleHint?: 'cliente' | 'funcionario') => {
         set({ isLoading: true, error: null });
@@ -99,19 +102,24 @@ export const useAuthStore = create<AuthState>()(
               user: merged, 
               isAuthenticated: true, 
               isLoading: false,
-              error: null 
+              error: null,
+              errors: []
             });
             return true;
           } else {
+            const errorInfo = parseApiError(response.error);
             set({ 
-              error: response.error || 'Erro no login', 
+              error: response.error || 'Erro no login',
+              errors: errorInfo,
               isLoading: false 
             });
             return false;
           }
         } catch (error) {
+          const errorInfo = parseApiError('Erro de conexão com o servidor');
           set({ 
-            error: 'Erro de conexão com o servidor', 
+            error: 'Erro de conexão com o servidor',
+            errors: errorInfo,
             isLoading: false 
           });
           return false;
@@ -127,12 +135,13 @@ export const useAuthStore = create<AuthState>()(
           user: null, 
           isAuthenticated: false, 
           isLoading: false,
-          error: null 
+          error: null,
+          errors: []
         });
       },
 
       register: async (userData: RegisterData) => {
-        set({ isLoading: true, error: null });
+        set({ isLoading: true, error: null, errors: [] });
         
         try {
           const response = await apiService.register(userData);
@@ -197,19 +206,24 @@ export const useAuthStore = create<AuthState>()(
               user: enrichedUser, 
               isAuthenticated: true, 
               isLoading: false,
-              error: null 
+              error: null,
+              errors: []
             });
             return true;
           } else {
+            const errorInfo = parseApiError(response.error);
             set({ 
-              error: response.error || 'Erro no cadastro', 
+              error: response.error || 'Erro no cadastro',
+              errors: errorInfo,
               isLoading: false 
             });
             return false;
           }
         } catch (error) {
+          const errorInfo = parseApiError('Erro de conexão com o servidor');
           set({ 
-            error: 'Erro de conexão com o servidor', 
+            error: 'Erro de conexão com o servidor',
+            errors: errorInfo,
             isLoading: false 
           });
           return false;
@@ -217,7 +231,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearError: () => {
-        set({ error: null });
+        set({ error: null, errors: [] });
       },
 
       checkAuth: async () => {

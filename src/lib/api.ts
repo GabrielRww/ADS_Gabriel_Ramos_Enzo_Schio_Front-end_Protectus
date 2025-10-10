@@ -90,9 +90,41 @@ class ApiService {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        
+        // Tratamento específico para erros estruturados do backend
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          // Formato: { "errors": [[{ "status": 400, "title": "...", "details": "..." }]] }
+          const messages: string[] = [];
+          errorData.errors.forEach((errorGroup: any) => {
+            if (Array.isArray(errorGroup)) {
+              errorGroup.forEach((error: any) => {
+                if (error.details) {
+                  messages.push(error.details);
+                } else if (error.title) {
+                  messages.push(error.title);
+                }
+              });
+            }
+          });
+          if (messages.length > 0) {
+            errorMessage = messages.join('; ');
+          }
+        } else if (errorData.message) {
+          // Formato simples: { "message": "..." }
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          // Formato alternativo: { "error": "..." }
+          errorMessage = errorData.error;
+        } else if (errorData.details) {
+          // Formato alternativo: { "details": "..." }
+          errorMessage = errorData.details;
+        }
+        
         return {
           success: false,
-          error: errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+          error: errorMessage,
         };
       }
 
@@ -570,6 +602,90 @@ class ApiService {
     return this.request<any[]>(endpoint, {
       method: 'GET',
     });
+  }
+
+  // Buscar valor FIPE real
+  async getValorFipe(params: { marca: string; modelo: string; ano: string }): Promise<ApiResponse<any>> {
+    try {
+      // Primeiro tenta buscar do backend (se tiver endpoint específico)
+      const endpoint = `/insurances/valor-fipe?marca=${encodeURIComponent(params.marca)}&modelo=${encodeURIComponent(params.modelo)}&ano=${encodeURIComponent(params.ano)}`;
+      
+      const backendResponse = await this.request<any>(endpoint, {
+        method: 'GET',
+      });
+      
+      if (backendResponse.success && backendResponse.data?.valor) {
+        return backendResponse;
+      }
+    } catch (error) {
+      console.log('Backend FIPE não disponível, tentando API pública...');
+    }
+
+    try {
+      // Se backend não tiver, usa API pública da FIPE
+      // API da FIPE pública (paralelo.ws ou similar)
+      const fipeApiUrl = 'https://parallelum.com.br/fipe/api/v1/carros';
+      
+      // 1. Buscar código da marca
+      const marcasResponse = await fetch(`${fipeApiUrl}/marcas`);
+      const marcas = await marcasResponse.json();
+      const marcaEncontrada = marcas.find((m: any) => 
+        m.nome.toLowerCase().includes(params.marca.toLowerCase()) ||
+        params.marca.toLowerCase().includes(m.nome.toLowerCase())
+      );
+      
+      if (!marcaEncontrada) {
+        return { success: false, error: 'Marca não encontrada na FIPE' };
+      }
+
+      // 2. Buscar código do modelo
+      const modelosResponse = await fetch(`${fipeApiUrl}/marcas/${marcaEncontrada.codigo}/modelos`);
+      const modelosData = await modelosResponse.json();
+      const modeloEncontrado = modelosData.modelos?.find((m: any) => 
+        m.nome.toLowerCase().includes(params.modelo.toLowerCase()) ||
+        params.modelo.toLowerCase().includes(m.nome.toLowerCase())
+      );
+      
+      if (!modeloEncontrado) {
+        return { success: false, error: 'Modelo não encontrado na FIPE' };
+      }
+
+      // 3. Buscar código do ano
+      const anosResponse = await fetch(`${fipeApiUrl}/marcas/${marcaEncontrada.codigo}/modelos/${modeloEncontrado.codigo}/anos`);
+      const anos = await anosResponse.json();
+      const anoEncontrado = anos.find((a: any) => 
+        a.nome.includes(params.ano) || a.codigo.includes(params.ano)
+      );
+      
+      if (!anoEncontrado) {
+        return { success: false, error: 'Ano não encontrado na FIPE' };
+      }
+
+      // 4. Buscar valor FIPE
+      const valorResponse = await fetch(`${fipeApiUrl}/marcas/${marcaEncontrada.codigo}/modelos/${modeloEncontrado.codigo}/anos/${anoEncontrado.codigo}`);
+      const valorData = await valorResponse.json();
+      
+      if (valorData.Valor) {
+        return {
+          success: true,
+          data: {
+            valor: valorData.Valor,
+            marca: valorData.Marca,
+            modelo: valorData.Modelo,
+            anoModelo: valorData.AnoModelo,
+            combustivel: valorData.Combustivel,
+            codigoFipe: valorData.CodigoFipe,
+            mesReferencia: valorData.MesReferencia,
+            fonte: 'FIPE_API_PUBLICA'
+          }
+        };
+      }
+
+      return { success: false, error: 'Valor FIPE não encontrado' };
+    } catch (error) {
+      console.error('Erro ao buscar valor FIPE:', error);
+      return { success: false, error: 'Erro ao consultar FIPE' };
+    }
   }
 }
 

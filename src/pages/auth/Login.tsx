@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/authStore';
+import { formatErrorsForToast, getErrorTips } from '@/utils/errorMessages';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -19,7 +20,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { login, isLoading: authLoading, error } = useAuthStore();
+  const { login, isLoading: authLoading, error, errors } = useAuthStore();
 
   const from = location.state?.from?.pathname || '/dashboard';
 
@@ -36,12 +37,25 @@ export default function Login() {
       });
       navigate(from, { replace: true });
     } else {
-      const { error } = useAuthStore.getState();
-      toast({
-        variant: "destructive",
-        title: "Erro no login",
-        description: error || "Email ou senha incorretos."
-      });
+      const { errors } = useAuthStore.getState();
+      
+      if (errors && errors.length > 0) {
+        const { title, description } = formatErrorsForToast(errors);
+        const tips = getErrorTips(errors);
+        
+        toast({
+          variant: "destructive",
+          title,
+          description: tips.length > 0 ? `${description}\n\n${tips.join('\n')}` : description
+        });
+      } else {
+        const { error } = useAuthStore.getState();
+        toast({
+          variant: "destructive",
+          title: "Erro no login",
+          description: error || "Email ou senha incorretos."
+        });
+      }
     }
 
     setIsLoading(false);

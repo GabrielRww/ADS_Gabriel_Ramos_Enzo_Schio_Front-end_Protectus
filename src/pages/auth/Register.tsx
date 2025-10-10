@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Shield, Sun, Moon } from 'lucide-react';
+import { Eye, EyeOff, Shield, Sun, Moon, AlertCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore, UserRole, type RegisterData } from '@/store/authStore';
+import { PasswordStrength, usePasswordValidation } from '@/components/ui/password-strength';
+import { formatErrorsForToast, getErrorTips } from '@/utils/errorMessages';
+import { FieldError, FormErrorSummary } from '@/components/ui/field-error';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -27,7 +31,10 @@ export default function Register() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { register, isLoading: authLoading, error } = useAuthStore();
+  const { register, isLoading: authLoading, error, errors } = useAuthStore();
+
+  // Validação de senha
+  const passwordValidation = usePasswordValidation(password);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,11 +48,11 @@ export default function Register() {
       return;
     }
 
-    if (password.length < 6) {
+    if (!passwordValidation.isValid) {
       toast({
         variant: "destructive",
-        title: "Erro na validação",
-        description: "A senha deve ter pelo menos 6 caracteres."
+        title: "Senha muito fraca",
+        description: "A senha deve atender pelo menos 3 dos critérios de segurança."
       });
       return;
     }
@@ -72,12 +79,25 @@ export default function Register() {
       });
       navigate('/dashboard');
     } else {
-      const { error } = useAuthStore.getState();
-      toast({
-        variant: "destructive",
-        title: "Erro no cadastro",
-        description: error || "Ocorreu um erro. Tente novamente."
-      });
+      const { errors } = useAuthStore.getState();
+      
+      if (errors && errors.length > 0) {
+        const { title, description } = formatErrorsForToast(errors);
+        const tips = getErrorTips(errors);
+        
+        toast({
+          variant: "destructive",
+          title,
+          description: tips.length > 0 ? `${description}\n\n${tips.join('\n')}` : description
+        });
+      } else {
+        const { error } = useAuthStore.getState();
+        toast({
+          variant: "destructive",
+          title: "Erro no cadastro",
+          description: error || "Ocorreu um erro. Tente novamente."
+        });
+      }
     }
 
     setIsLoading(false);
@@ -168,6 +188,13 @@ export default function Register() {
             <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
           </CardHeader>
           <CardContent className="relative">
+            {/* Resumo de erros no topo do formulário */}
+            {errors && errors.length > 0 && (
+              <div className="mb-6">
+                <FormErrorSummary errors={errors} />
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2 group/field">
                 <Label htmlFor="name" className="text-sm font-semibold text-foreground/90 group-focus-within/field:text-primary transition-colors duration-200">
@@ -181,10 +208,13 @@ export default function Register() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30"
+                    className={`h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30 ${
+                      errors.some(error => error.field === 'name') ? "border-red-500/50" : ""
+                    }`}
                   />
                   <div className="absolute inset-0 rounded-md bg-gradient-to-r from-primary/5 to-accent/5 opacity-0 group-focus-within/field:opacity-100 transition-opacity duration-300 pointer-events-none" />
                 </div>
+                <FieldError errors={errors} fieldName="name" />
               </div>
 
               <div className="space-y-2 group/field">
@@ -199,10 +229,13 @@ export default function Register() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30"
+                    className={`h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30 ${
+                      errors.some(error => error.field === 'email') ? "border-red-500/50" : ""
+                    }`}
                   />
                   <div className="absolute inset-0 rounded-md bg-gradient-to-r from-primary/5 to-accent/5 opacity-0 group-focus-within/field:opacity-100 transition-opacity duration-300 pointer-events-none" />
                 </div>
+                <FieldError errors={errors} fieldName="email" />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -218,10 +251,13 @@ export default function Register() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       required
-                      className="h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30"
+                      className={`h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30 ${
+                        errors.some(error => error.field === 'phone') ? "border-red-500/50" : ""
+                      }`}
                     />
                     <div className="absolute inset-0 rounded-md bg-gradient-to-r from-primary/5 to-accent/5 opacity-0 group-focus-within/field:opacity-100 transition-opacity duration-300 pointer-events-none" />
                   </div>
+                  <FieldError errors={errors} fieldName="phone" />
                 </div>
                 
                 <div className="space-y-2 group/field">
@@ -236,10 +272,13 @@ export default function Register() {
                       value={cpf}
                       onChange={(e) => setCpf(e.target.value)}
                       required
-                      className="h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30"
+                      className={`h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30 ${
+                        errors.some(error => error.field === 'cpf') ? "border-red-500/50" : ""
+                      }`}
                     />
                     <div className="absolute inset-0 rounded-md bg-gradient-to-r from-primary/5 to-accent/5 opacity-0 group-focus-within/field:opacity-100 transition-opacity duration-300 pointer-events-none" />
                   </div>
+                  <FieldError errors={errors} fieldName="cpf" />
                 </div>
               </div>
 
@@ -290,11 +329,13 @@ export default function Register() {
                     <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="Digite sua senha (mínimo 6 caracteres)"
+                      placeholder="Digite sua senha"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30 pr-12"
+                      className={`h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30 pr-12 ${
+                        !passwordValidation.isValid && password.length > 0 ? "border-red-500/50" : ""
+                      }`}
                     />
                     <div className="absolute inset-0 rounded-md bg-gradient-to-r from-primary/5 to-accent/5 opacity-0 group-focus-within/field:opacity-100 transition-opacity duration-300 pointer-events-none" />
                   </div>
@@ -312,6 +353,9 @@ export default function Register() {
                     )}
                   </Button>
                 </div>
+                {password.length > 0 && (
+                  <PasswordStrength password={password} />
+                )}
               </div>
 
               <div className="space-y-2 group/field">
@@ -327,7 +371,9 @@ export default function Register() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
-                      className="h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30 pr-12"
+                      className={`h-11 bg-background/60 backdrop-blur-sm border-primary/20 focus:border-primary/50 focus:bg-background/80 transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 hover:border-primary/30 pr-12 ${
+                        confirmPassword.length > 0 && password !== confirmPassword ? "border-red-500/50" : ""
+                      }`}
                     />
                     <div className="absolute inset-0 rounded-md bg-gradient-to-r from-primary/5 to-accent/5 opacity-0 group-focus-within/field:opacity-100 transition-opacity duration-300 pointer-events-none" />
                   </div>
@@ -345,6 +391,9 @@ export default function Register() {
                     )}
                   </Button>
                 </div>
+                {confirmPassword.length > 0 && password !== confirmPassword && (
+                  <p className="text-sm text-red-500 mt-1">As senhas não coincidem</p>
+                )}
               </div>
 
               <Button 
