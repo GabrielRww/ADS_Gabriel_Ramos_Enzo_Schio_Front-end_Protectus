@@ -97,9 +97,32 @@ export default function Simulacao() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Simular Seguro</h1>
+    <div className="min-h-screen relative">
+      {/* Animated Background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/20"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.07)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.07)_1px,transparent_1px)] bg-[size:32px_32px] animate-grid-flow"></div>
+        
+        <div className="absolute top-20 left-10 w-96 h-96 bg-primary/5 rounded-full blur-[120px] animate-float"></div>
+        <div className="absolute bottom-32 right-10 w-[500px] h-[500px] bg-accent/5 rounded-full blur-[140px] animate-float" style={{ animationDelay: '2s' }}></div>
+        
+        {[...Array(10)].map((_, i) => (
+          <div
+            key={i}
+            className={`absolute w-${i % 3 + 1} h-${i % 3 + 1} bg-primary/${20 + (i % 3) * 10} rounded-full animate-float`}
+            style={{
+              top: `${(i * 7) % 90}%`,
+              left: `${(i * 11) % 90}%`,
+              animationDelay: `${i * 0.5}s`,
+              animationDuration: `${8 + (i % 5)}s`
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="space-y-6 relative">
+        <div className="animate-fade-in">
+          <h1 className="text-3xl font-bold">Simular Seguro</h1>
         <p className="text-muted-foreground">
           Descubra o plano ideal para sua proteção
         </p>
@@ -122,7 +145,7 @@ export default function Simulacao() {
         </TabsList>
 
         <TabsContent value="veiculo" className="space-y-6">
-          <Card>
+          <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Car className="h-5 w-5 text-primary" />
@@ -212,7 +235,7 @@ export default function Simulacao() {
         </TabsContent>
 
         <TabsContent value="residencial" className="space-y-6">
-          <Card>
+          <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Home className="h-5 w-5 text-primary" />
@@ -262,7 +285,7 @@ export default function Simulacao() {
         </TabsContent>
 
         <TabsContent value="celular" className="space-y-6">
-          <Card>
+          <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Smartphone className="h-5 w-5 text-primary" />
@@ -334,7 +357,8 @@ export default function Simulacao() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {planos[tipoSeguro as keyof typeof planos].map((plano, index) => (
-              <Card key={index} className={`relative ${plano.popular ? 'border-primary shadow-lg' : ''}`}>
+              <Card key={index} className={`relative overflow-hidden group bg-card/80 backdrop-blur-sm transition-all duration-300 ${plano.popular ? 'border-primary shadow-glow hover:shadow-glow-lg' : 'border-primary/10 hover:border-primary/30 hover:shadow-lg'}`}>
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 {plano.popular && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                     <Badge className="bg-primary text-primary-foreground flex items-center gap-1">
@@ -378,6 +402,7 @@ export default function Simulacao() {
         onOpenChange={setModalOpen}
         tipoSeguro={tipoSeguro as 'veiculo' | 'residencial' | 'celular'}
       />
+      </div>
     </div>
   );
 }

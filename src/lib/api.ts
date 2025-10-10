@@ -540,6 +540,37 @@ class ApiService {
     const url = q ? `${urlBase}?${q}` : urlBase;
     return this.request<any[]>(url, { headers: this.buildVehicleHeaders() });
   }
+
+  // Catálogo de celulares
+  async getMarcasCelulares(): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>('/insurances/celulares/marcas', {
+      method: 'GET',
+    });
+  }
+
+  async getModelosCelulares(params: { marca?: string } = {}): Promise<ApiResponse<any[]>> {
+    let endpoint = '/insurances/celulares/modelos';
+    if (params.marca) {
+      const queryParams = new URLSearchParams();
+      queryParams.append('marca', params.marca);
+      endpoint += `?${queryParams.toString()}`;
+    }
+    return this.request<any[]>(endpoint, {
+      method: 'GET',
+    });
+  }
+
+  async getCoresCelulares(params: { marca?: string; modelo?: string } = {}): Promise<ApiResponse<any[]>> {
+    let endpoint = '/insurances/celulares/cores';
+    const queryParams = new URLSearchParams();
+    if (params.marca) queryParams.append('marca', params.marca);
+    if (params.modelo) queryParams.append('modelo', params.modelo);
+    if (queryParams.toString()) endpoint += `?${queryParams.toString()}`;
+    
+    return this.request<any[]>(endpoint, {
+      method: 'GET',
+    });
+  }
 }
 
 export const apiService = new ApiService();

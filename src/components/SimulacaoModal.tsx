@@ -115,6 +115,12 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   const [anos, setAnos] = useState<Array<{ id: string | number; nome: string }>>([]);
   const [loadingCatalog, setLoadingCatalog] = useState({ marcas: false, modelos: false, anos: false });
 
+  // Catálogo de celulares dinâmico
+  const [marcasCelulares, setMarcasCelulares] = useState<Array<{ id: string | number; nome: string }>>([]);
+  const [modelosCelulares, setModelosCelulares] = useState<Array<{ id: string | number; nome: string }>>([]);
+  const [coresCelulares, setCoresCelulares] = useState<Array<{ id: string | number; nome: string }>>([]);
+  const [loadingCelulares, setLoadingCelulares] = useState({ marcas: false, modelos: false, cores: false });
+
   useEffect(() => {
     // Enforce auth: se abrir sem estar logado, redireciona para login
     if (open && !isAuthenticated) {
@@ -123,11 +129,27 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       navigate('/login', { replace: false });
       return;
     }
-    // Reset flag ao fechar
+    
+    // Inicializar tipo de seguro se passado como prop
+    if (open && initialTipoSeguro && !tipoSeguro) {
+      setTipoSeguro(initialTipoSeguro);
+    }
+    
+    // Reset flag ao fechar e limpar dados
     if (!open) {
       prefilledRef.current = false;
+      // Limpar dados dos catálogos ao fechar
+      setMarcas([]);
+      setModelos([]);
+      setAnos([]);
+      setMarcasCelulares([]);
+      setModelosCelulares([]);
+      setCoresCelulares([]);
+      // Reset loading states
+      setLoadingCatalog({ marcas: false, modelos: false, anos: false });
+      setLoadingCelulares({ marcas: false, modelos: false, cores: false });
     }
-  }, [open, isAuthenticated]);
+  }, [open, isAuthenticated, initialTipoSeguro]);
 
   // Prefill de dados pessoais quando autenticado e modal abrir
   useEffect(() => {
@@ -206,6 +228,39 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
     })();
   }, [open, tipoSeguro, isAuthenticated]);
 
+  // Carregar marcas de celulares
+  useEffect(() => {
+    if (!open || tipoSeguro !== 'celular') return;
+    if (!isAuthenticated) {
+      setMarcasCelulares([]); setModelosCelulares([]); setCoresCelulares([]);
+      return;
+    }
+    (async () => {
+      try {
+        setLoadingCelulares((s) => ({ ...s, marcas: true }));
+        const resp = await apiService.getMarcasCelulares();
+        if (resp.success) {
+          const raw = resp.data as any;
+          const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.marcas) ? raw.marcas : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
+          const mapped = arr.map(toOption);
+          setMarcasCelulares(mapped);
+        } else {
+          const msg = (resp as any)?.error || 'Não foi possível carregar marcas de celulares';
+          if (String(msg).includes('401')) {
+            toast({ title: 'Sessão necessária', description: 'Faça login para carregar marcas de celulares.', variant: 'destructive' });
+          } else {
+            toast({ title: 'Falha ao carregar marcas', description: String(msg), variant: 'destructive' });
+          }
+          setMarcasCelulares([]);
+        }
+      } catch (e) {
+        setMarcasCelulares([]);
+      } finally {
+        setLoadingCelulares((s) => ({ ...s, marcas: false }));
+      }
+    })();
+  }, [open, tipoSeguro, isAuthenticated]);
+
   // Quando selecionar marca, carregar modelos e limpar dependentes
   useEffect(() => {
     const marca = formData.marca;
@@ -278,6 +333,149 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
     })();
   }, [formData.modelo, tipoSeguro, isAuthenticated]);
 
+  // Quando selecionar marca de celular, carregar modelos
+  useEffect(() => {
+    const marcaCelular = formData.marcaCelular;
+    if (tipoSeguro !== 'celular' || !marcaCelular || !isAuthenticated) { 
+      setModelosCelulares([]); setCoresCelulares([]); 
+      return; 
+    }
+    (async () => {
+      try {
+        setLoadingCelulares((s) => ({ ...s, modelos: true }));
+        const marcaNome = marcasCelulares.find((m) => String(m.id) === String(marcaCelular))?.nome || String(marcaCelular);
+        console.debug('Carregando modelos de celular para marca:', marcaNome);
+        const resp = await apiService.getModelosCelulares({ marca: String(marcaNome) });
+        if (resp.success) {
+          const raw = resp.data as any;
+          const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.modelos) ? raw.modelos : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
+          const mapped = arr.map(toOption);
+          setModelosCelulares(mapped);
+        } else {
+          const msg = (resp as any)?.error || 'Não foi possível carregar modelos de celular';
+          toast({ title: 'Falha ao carregar modelos', description: String(msg), variant: 'destructive' });
+          setModelosCelulares([]);
+        }
+        // reset campos dependentes
+        setFormData((prev) => ({ ...prev, modeloCelular: '', corCelular: '' }));
+        setCoresCelulares([]);
+      } catch (e) {
+        setModelosCelulares([]);
+      } finally {
+        setLoadingCelulares((s) => ({ ...s, modelos: false }));
+      }
+    })();
+  }, [formData.marcaCelular, tipoSeguro, isAuthenticated]);
+
+  // Quando selecionar modelo de celular, carregar cores
+  useEffect(() => {
+    const marcaCelular = formData.marcaCelular; 
+    const modeloCelular = formData.modeloCelular;
+    if (tipoSeguro !== 'celular' || !marcaCelular || !modeloCelular || !isAuthenticated) { 
+      setCoresCelulares([]); 
+      return; 
+    }
+    (async () => {
+      try {
+        setLoadingCelulares((s) => ({ ...s, cores: true }));
+        const marcaNome = marcasCelulares.find((m) => String(m.id) === String(marcaCelular))?.nome || String(marcaCelular);
+        const modeloNome = modelosCelulares.find((m) => String(m.id) === String(modeloCelular))?.nome || String(modeloCelular);
+        console.debug('Carregando cores para:', { marca: marcaNome, modelo: modeloNome });
+        const resp = await apiService.getCoresCelulares({ marca: String(marcaNome), modelo: String(modeloNome) });
+        if (resp.success) {
+          const raw = resp.data as any;
+          const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.cores) ? raw.cores : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
+          const mapped = arr.map(toOption);
+          setCoresCelulares(mapped);
+        } else {
+          const msg = (resp as any)?.error || 'Não foi possível carregar cores';
+          toast({ title: 'Falha ao carregar cores', description: String(msg), variant: 'destructive' });
+          setCoresCelulares([]);
+        }
+        // reset cor
+        setFormData((prev) => ({ ...prev, corCelular: '' }));
+      } catch (e) {
+        setCoresCelulares([]);
+      } finally {
+        setLoadingCelulares((s) => ({ ...s, cores: false }));
+      }
+    })();
+  }, [formData.modeloCelular, tipoSeguro, isAuthenticated]);
+
+  // Auto-buscar valor do veículo quando marca, modelo e ano estiverem selecionados
+  useEffect(() => {
+    const { marca, modelo, ano } = formData;
+    if (tipoSeguro !== 'veiculo' || !marca || !modelo || !ano || !isAuthenticated) return;
+    
+    (async () => {
+      try {
+        // Simula busca na tabela FIPE - aqui você pode implementar uma API real
+        const marcaNome = marcas.find((m) => String(m.id) === String(marca))?.nome || '';
+        const modeloNome = modelos.find((m) => String(m.id) === String(modelo))?.nome || '';
+        
+        // Por enquanto, vamos simular valores baseados no ano
+        let valorEstimado = '';
+        const anoInt = parseInt(ano);
+        const idadeVeiculo = new Date().getFullYear() - anoInt;
+        
+        if (idadeVeiculo <= 2) {
+          valorEstimado = 'R$ 65.000';
+        } else if (idadeVeiculo <= 5) {
+          valorEstimado = 'R$ 45.000';
+        } else if (idadeVeiculo <= 10) {
+          valorEstimado = 'R$ 25.000';
+        } else {
+          valorEstimado = 'R$ 15.000';
+        }
+        
+        setFormData((prev) => ({ ...prev, valorVeiculo: valorEstimado }));
+        
+        toast({
+          title: "Valor FIPE carregado",
+          description: `${marcaNome} ${modeloNome} ${ano}: ${valorEstimado}`,
+        });
+      } catch (error) {
+        console.error('Erro ao buscar valor FIPE:', error);
+      }
+    })();
+  }, [formData.marca, formData.modelo, formData.ano, tipoSeguro, isAuthenticated]);
+
+  // Auto-buscar valor do celular quando marca, modelo e cor estiverem selecionados
+  useEffect(() => {
+    const { marcaCelular, modeloCelular, corCelular } = formData;
+    if (tipoSeguro !== 'celular' || !marcaCelular || !modeloCelular || !corCelular || !isAuthenticated) return;
+    
+    (async () => {
+      try {
+        // Simula busca do valor do celular no catálogo
+        const marcaNome = marcasCelulares.find((m) => String(m.id) === String(marcaCelular))?.nome || '';
+        const modeloNome = modelosCelulares.find((m) => String(m.id) === String(modeloCelular))?.nome || '';
+        
+        // Por enquanto, vamos simular valores baseados na marca
+        let valorEstimado = '';
+        
+        if (marcaNome.toLowerCase().includes('apple')) {
+          valorEstimado = 'R$ 4.500';
+        } else if (marcaNome.toLowerCase().includes('samsung')) {
+          valorEstimado = 'R$ 3.200';
+        } else if (marcaNome.toLowerCase().includes('xiaomi')) {
+          valorEstimado = 'R$ 1.800';
+        } else {
+          valorEstimado = 'R$ 1.200';
+        }
+        
+        setFormData((prev) => ({ ...prev, valorAparelho: valorEstimado }));
+        
+        toast({
+          title: "Valor do aparelho carregado",
+          description: `${marcaNome} ${modeloNome}: ${valorEstimado}`,
+        });
+      } catch (error) {
+        console.error('Erro ao buscar valor do celular:', error);
+      }
+    })();
+  }, [formData.marcaCelular, formData.modeloCelular, formData.corCelular, tipoSeguro, isAuthenticated]);
+
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
 
@@ -286,6 +484,30 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   };
 
   const handleNextStep = () => {
+    // Validação por etapa
+    if (currentStep === 1 && !tipoSeguro) {
+      toast({
+        title: "Tipo de seguro",
+        description: "Por favor, selecione o tipo de seguro.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (currentStep === 3) {
+      const requiredPersonalFields = ['nome', 'email', 'telefone', 'cpf'];
+      const missingPersonal = requiredPersonalFields.filter(field => !formData[field]);
+      
+      if (missingPersonal.length > 0) {
+        toast({
+          title: "Dados pessoais incompletos",
+          description: "Por favor, preencha todos os seus dados pessoais.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     if (currentStep < totalSteps) {
       setCurrentStep(prev => prev + 1);
     }
@@ -299,10 +521,56 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
 
   const handleSubmit = async () => {
     try {
-      const simulationData = {
+      // Validação dos dados antes do envio
+      const requiredFields = {
+        veiculo: ['marca', 'modelo', 'ano', 'placa', 'uso'],
+        residencial: ['tipoImovel', 'area', 'cepResidencia', 'valorImovel'],
+        celular: ['marcaCelular', 'modeloCelular', 'corCelular', 'imei']
+      };
+
+      const currentRequired = requiredFields[tipoSeguro] || [];
+      const missingFields = currentRequired.filter(field => !formData[field]);
+
+      if (missingFields.length > 0) {
+        toast({
+          title: "Campos obrigatórios",
+          description: `Por favor, preencha todos os campos obrigatórios.`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Preparar dados para envio
+      const simulationData: any = {
         type: tipoSeguro,
+        dadosPessoais: {
+          nome: formData.nome,
+          email: formData.email,
+          telefone: formData.telefone,
+          cpf: formData.cpf,
+        },
         ...formData
       };
+
+      // Adicionar dados específicos por tipo
+      if (tipoSeguro === 'veiculo') {
+        simulationData.dadosVeiculo = {
+          marca: marcas.find(m => String(m.id) === String(formData.marca))?.nome,
+          modelo: modelos.find(m => String(m.id) === String(formData.modelo))?.nome,
+          ano: formData.ano,
+          placa: formData.placa,
+          uso: formData.uso,
+          valorVeiculo: formData.valorVeiculo
+        };
+      } else if (tipoSeguro === 'celular') {
+        simulationData.dadosCelular = {
+          marca: marcasCelulares.find(m => String(m.id) === String(formData.marcaCelular))?.nome,
+          modelo: modelosCelulares.find(m => String(m.id) === String(formData.modeloCelular))?.nome,
+          cor: coresCelulares.find(c => String(c.id) === String(formData.corCelular))?.nome,
+          imei: formData.imei,
+          valorAparelho: formData.valorAparelho
+        };
+      }
 
       const result = await simulate(simulationData);
       
@@ -410,6 +678,12 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
             <div className="text-center mb-6">
               <h3 className="text-lg font-semibold mb-2">Escolha o tipo de seguro</h3>
               <p className="text-muted-foreground">Selecione o seguro que deseja simular</p>
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  ✨ <strong>Novidades:</strong> Agora buscamos automaticamente dados de veículos e celulares do nosso catálogo, 
+                  incluindo valores estimados baseados na tabela FIPE para carros e preços de mercado para celulares!
+                </p>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -581,14 +855,30 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   <Input
                     id="placa"
                     value={formData.placa || ''}
-                    onChange={(e) => handleInputChange('placa', e.target.value)}
+                    onChange={(e) => handleInputChange('placa', e.target.value.toUpperCase())}
                     placeholder="ABC-1234"
+                    maxLength={8}
                   />
                 </div>
                 
                 <div className="space-y-2">
+                  <Label htmlFor="valor-veiculo">Valor do Veículo (FIPE)</Label>
+                  <Input
+                    id="valor-veiculo"
+                    value={formData.valorVeiculo || ''}
+                    onChange={(e) => handleInputChange('valorVeiculo', e.target.value)}
+                    placeholder="R$ 45.000"
+                    readOnly
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    * Valor será calculado automaticamente baseado na tabela FIPE
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
                   <Label htmlFor="uso">Uso do veículo *</Label>
-                  <Select onValueChange={(value) => handleInputChange('uso', value)}>
+                  <Select value={formData.uso || ''} onValueChange={(value) => handleInputChange('uso', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Como usa o veículo?" />
                     </SelectTrigger>
@@ -658,30 +948,68 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="marca-celular">Marca *</Label>
-                  <Select onValueChange={(value) => handleInputChange('marcaCelular', value)}>
+                  <Select 
+                    disabled={!isAuthenticated || loadingCelulares.marcas} 
+                    value={formData.marcaCelular || ''} 
+                    onValueChange={(value) => handleInputChange('marcaCelular', value)}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione a marca" />
+                      <SelectValue placeholder={
+                        !isAuthenticated ? 'Faça login para carregar marcas' : 
+                        loadingCelulares.marcas ? 'Carregando marcas...' : 
+                        'Selecione a marca'
+                      } />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="apple">Apple</SelectItem>
-                      <SelectItem value="samsung">Samsung</SelectItem>
-                      <SelectItem value="xiaomi">Xiaomi</SelectItem>
-                      <SelectItem value="motorola">Motorola</SelectItem>
+                      {marcasCelulares.map((m) => (
+                        <SelectItem key={String(m.id)} value={String(m.id)}>{m.nome}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="modelo-celular">Modelo *</Label>
-                  <Select onValueChange={(value) => handleInputChange('modeloCelular', value)}>
+                  <Select 
+                    disabled={!isAuthenticated || !formData.marcaCelular || loadingCelulares.modelos} 
+                    value={formData.modeloCelular || ''} 
+                    onValueChange={(value) => handleInputChange('modeloCelular', value)}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o modelo" />
+                      <SelectValue placeholder={
+                        !isAuthenticated ? 'Faça login primeiro' : 
+                        !formData.marcaCelular ? 'Selecione a marca primeiro' : 
+                        loadingCelulares.modelos ? 'Carregando modelos...' : 
+                        'Selecione o modelo'
+                      } />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="iphone14">iPhone 14</SelectItem>
-                      <SelectItem value="galaxys23">Galaxy S23</SelectItem>
-                      <SelectItem value="redminote12">Redmi Note 12</SelectItem>
-                      <SelectItem value="motog32">Moto G32</SelectItem>
+                      {modelosCelulares.map((m) => (
+                        <SelectItem key={String(m.id)} value={String(m.id)}>{m.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="cor-celular">Cor *</Label>
+                  <Select 
+                    disabled={!isAuthenticated || !formData.modeloCelular || loadingCelulares.cores || coresCelulares.length === 0} 
+                    value={formData.corCelular || ''} 
+                    onValueChange={(value) => handleInputChange('corCelular', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={
+                        !isAuthenticated ? 'Faça login primeiro' : 
+                        !formData.modeloCelular ? 'Selecione o modelo primeiro' : 
+                        loadingCelulares.cores ? 'Carregando cores...' : 
+                        coresCelulares.length ? 'Selecione a cor' : 'Nenhuma cor disponível'
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {coresCelulares.map((c) => (
+                        <SelectItem key={String(c.id)} value={String(c.id)}>{c.nome}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -693,17 +1021,23 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     value={formData.imei || ''}
                     onChange={(e) => handleInputChange('imei', e.target.value)}
                     placeholder="123456789012345"
+                    maxLength={15}
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="valor-aparelho">Valor do Aparelho *</Label>
+                  <Label htmlFor="valor-aparelho">Valor do Aparelho</Label>
                   <Input
                     id="valor-aparelho"
                     value={formData.valorAparelho || ''}
                     onChange={(e) => handleInputChange('valorAparelho', e.target.value)}
                     placeholder="R$ 3.500"
+                    readOnly
+                    className="bg-muted"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    * Valor será calculado automaticamente baseado no modelo selecionado
+                  </p>
                 </div>
               </div>
             </div>

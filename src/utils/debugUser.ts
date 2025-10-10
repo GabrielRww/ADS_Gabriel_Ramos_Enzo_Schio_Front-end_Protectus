@@ -1,9 +1,9 @@
 // Script de debug para verificar dados do usuário
 export function debugUserData() {
-  console.group('🔍 DEBUG: Dados do Usuário');
+  console.group('DEBUG: Dados do Usuário');
   
   // 1. localStorage
-  console.group('📦 LocalStorage');
+  console.group('LocalStorage');
   try {
     const userStr = localStorage.getItem('protectus-user');
     const tokenStr = localStorage.getItem('protectus-token');
@@ -31,7 +31,7 @@ export function debugUserData() {
   console.groupEnd();
   
   // 2. Zustand Store
-  console.group('🗄️ Zustand Store');
+  console.group('Zustand Store');
   try {
     const authState = localStorage.getItem('protectus-auth');
     console.log('protectus-auth (raw):', authState);

@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, FileText, MapPin, TrendingUp, Clock, DollarSign, Activity } from "lucide-react";
+import { Users, FileText, MapPin, AlertTriangle, TrendingUp, Clock, DollarSign, Activity } from "lucide-react";
 
 export default function AdminDashboard() {
   const metrics = [
@@ -22,20 +22,27 @@ export default function AdminDashboard() {
       color: "text-green-600"
     },
     {
-      title: "Veículos Monitorados",
-      value: "128",
+      title: "Rastreadores Ativos",
+      value: "734",
       change: "+5.1%",
       icon: MapPin,
       color: "text-purple-600"
+    },
+    {
+      title: "Incidentes Hoje",
+      value: "12",
+      change: "-23.5%",
+      icon: AlertTriangle,
+      color: "text-red-600"
     }
   ];
 
   const recentActivities = [
     { id: 1, type: "Novo Cliente", description: "João Silva cadastrado", time: "2 min atrás", status: "success" },
     { id: 2, type: "Apólice Aprovada", description: "Apólice #A001234 aprovada", time: "15 min atrás", status: "success" },
-  // Removido item de incidente
+    { id: 3, type: "Incidente", description: "Veículo ABC-1234 - Furto reportado", time: "1h atrás", status: "warning" },
     { id: 4, type: "Pagamento", description: "Pagamento recebido - R$ 450,00", time: "2h atrás", status: "success" },
-    { id: 5, type: "Sistema", description: "Mapa atualizado", time: "3h atrás", status: "success" }
+    { id: 5, type: "Rastreador", description: "Dispositivo RT001 offline", time: "3h atrás", status: "error" }
   ];
 
   const pendingTasks = [
@@ -64,9 +71,35 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="min-h-screen relative">
+      {/* Animated Background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/20"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.07)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.07)_1px,transparent_1px)] bg-[size:32px_32px] animate-grid-flow"></div>
+        
+        {/* Animated gradient orbs */}
+        <div className="absolute top-20 left-10 w-96 h-96 bg-primary/5 rounded-full blur-[120px] animate-float"></div>
+        <div className="absolute bottom-32 right-10 w-[500px] h-[500px] bg-accent/5 rounded-full blur-[140px] animate-float" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-primary/3 rounded-full blur-[100px] animate-glow-pulse"></div>
+        
+        {/* Floating particles */}
+        {[...Array(15)].map((_, i) => (
+          <div
+            key={i}
+            className={`absolute w-${i % 3 + 1} h-${i % 3 + 1} bg-primary/${20 + (i % 3) * 10} rounded-full animate-float`}
+            style={{
+              top: `${(i * 7) % 90}%`,
+              left: `${(i * 11) % 90}%`,
+              animationDelay: `${i * 0.5}s`,
+              animationDuration: `${8 + (i % 5)}s`
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="space-y-8 relative">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between animate-fade-in">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard Administrativo</h1>
           <p className="text-muted-foreground">
@@ -98,12 +131,13 @@ export default function AdminDashboard() {
       </div>
 
       {/* Métricas */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
         {metrics.map((metric, index) => {
           const Icon = metric.icon;
           return (
-            <Card key={index}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Card key={index} className="relative overflow-hidden group border-primary/10 hover:border-primary/30 bg-card/80 backdrop-blur-sm hover:shadow-glow transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
                 <CardTitle className="text-sm font-medium">
                   {metric.title}
                 </CardTitle>
@@ -121,9 +155,9 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 animate-fade-in" style={{ animationDelay: '0.2s' }}>
         {/* Atividades Recentes */}
-        <Card>
+        <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
@@ -153,7 +187,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Tarefas Pendentes */}
-        <Card>
+        <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -187,8 +221,8 @@ export default function AdminDashboard() {
       </div>
 
       {/* Estatísticas Financeiras */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+        <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Receita Mensal
@@ -206,14 +240,14 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Custo Operacional
+              Sinistros Pagos
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-amber-600" />
+            <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">R$ 42.350</div>
             <p className="text-xs text-muted-foreground">
-              -1.8% em relação ao mês anterior
+              -8.1% em relação ao mês anterior
             </p>
           </CardContent>
         </Card>
@@ -232,6 +266,7 @@ export default function AdminDashboard() {
             </p>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );

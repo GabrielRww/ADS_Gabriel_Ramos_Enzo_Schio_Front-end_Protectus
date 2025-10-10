@@ -164,16 +164,16 @@ export const useAuthStore = create<AuthState>()(
               // Reutiliza o fluxo de login da store para garantir hidratação de perfil e persistências
               const ok = await get().login(userData.email, userData.password, 'cliente');
               
-              // Força a re-salvamento dos dados após login, pois o login pode ter sobrescrito
+              // CRÍTICO: Força a re-salvamento dos dados após login, pois o login pode ter sobrescrito
               try {
                 const currentUser = get().user;
                 if (currentUser) {
                   const mergedAfterLogin = {
                     ...currentUser,
-                    phone: currentUser.phone || enrichedUser.phone,
-                    cpf: currentUser.cpf || enrichedUser.cpf,
-                    cep: currentUser.cep || enrichedUser.cep,
-                    address: currentUser.address || enrichedUser.address,
+                    phone: currentUser.phone || enrichedUser.phone || userData.phone,
+                    cpf: currentUser.cpf || enrichedUser.cpf || userData.cpf,
+                    cep: currentUser.cep || enrichedUser.cep || userData.cep,
+                    address: currentUser.address || enrichedUser.address || userData.address,
                   };
                   console.log('Register: Re-salvando após auto-login', mergedAfterLogin);
                   localStorage.setItem('protectus-user', JSON.stringify(mergedAfterLogin));

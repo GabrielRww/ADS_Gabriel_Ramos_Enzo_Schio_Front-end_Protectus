@@ -123,7 +123,7 @@ export default function Login() {
           <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-lg blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-700"></div>
           
           <CardHeader className="relative space-y-2 pb-6">
-            <CardTitle className="text-2xl font-bold text-foreground">Bem-vindo</CardTitle>
+            <CardTitle className="text-2xl font-bold text-foreground">Bem-vindo de volta</CardTitle>
             <CardDescription className="text-base">
               Digite suas credenciais para acessar o sistema
             </CardDescription>
@@ -201,28 +201,6 @@ export default function Login() {
                   <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-gradient-to-r from-primary to-accent group-hover:w-full transition-all duration-300"></span>
                 </Link>
               </p>
-            </div>
-
-            {/* Enhanced Demo credentials */}
-            <div className="mt-6 p-5 bg-gradient-to-br from-muted/60 via-muted/50 to-muted/40 backdrop-blur-md rounded-xl border border-primary/20 relative overflow-hidden group/demo hover:border-primary/30 transition-all duration-300">
-              {/* Animated glow effects */}
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover/demo:opacity-100 transition-opacity duration-500"></div>
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 rounded-xl blur-lg opacity-0 group-hover/demo:opacity-50 transition-opacity duration-500"></div>
-              
-              <p className="text-sm text-foreground font-semibold mb-3 relative flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                Credenciais de demonstração
-              </p>
-              <div className="space-y-2 text-sm relative">
-                <div className="flex items-start gap-2 p-2 rounded-md bg-background/50 hover:bg-background/70 transition-colors duration-200">
-                  <span className="font-semibold text-primary min-w-[90px]">Cliente:</span>
-                  <span className="text-muted-foreground">joao@email.com / 123456</span>
-                </div>
-                <div className="flex items-start gap-2 p-2 rounded-md bg-background/50 hover:bg-background/70 transition-colors duration-200">
-                  <span className="font-semibold text-primary min-w-[90px]">Funcionário:</span>
-                  <span className="text-muted-foreground">maria@protectus.com / 123456</span>
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>

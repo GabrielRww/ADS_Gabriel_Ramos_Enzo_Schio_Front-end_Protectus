@@ -49,7 +49,7 @@ export function Header() {
 
   const employeeNavigation: NavigationItem[] = [
     { name: 'Dashboard', href: '/admin' },
-    { name: 'Clientes', href: '/admin/clientes' },
+    { name: 'Funcionários', href: '/admin/clientes' },
     { name: 'Propostas', href: '/admin/propostas' },
     { name: 'Rastreadores', href: '/admin/rastreadores' }
   ];
