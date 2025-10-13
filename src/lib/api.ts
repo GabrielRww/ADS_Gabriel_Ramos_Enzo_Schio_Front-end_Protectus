@@ -513,6 +513,42 @@ class ApiService {
 
   // Simulação de seguro
   async simulateInsurance(simulationData: any): Promise<ApiResponse<any>> {
+    // Primeiro, tentar criar/verificar cliente se temos CPF
+    if (simulationData.cpfCliente) {
+      try {
+        console.log('👤 Verificando cliente CPF:', simulationData.cpfCliente);
+        
+        // Primeiro verifica se o cliente já existe
+        const existingClient = await this.request<any>(`/users/cliente?cpf=${simulationData.cpfCliente}`, {
+          method: 'GET',
+        });
+        
+        if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
+          console.log('✅ Cliente já existe, continuando com simulação');
+        } else {
+          console.log('👤 Cliente não encontrado, criando novo...');
+          const clientData = {
+            cpf: simulationData.cpfCliente,
+            nome: 'Cliente Simulação',
+            email: 'cliente@simulacao.com',
+            telefone: '00000000000',
+            cep: '00000000',
+            senha: '123456',
+            status: 1
+          };
+          
+          await this.request<any>('/users/cliente', {
+            method: 'POST',
+            body: JSON.stringify(clientData),
+          });
+          console.log('✅ Cliente criado com sucesso');
+        }
+      } catch (clientError) {
+        console.log('⚠️ Erro ao verificar/criar cliente (continuando):', clientError);
+        // Não é um erro crítico, continua com a simulação
+      }
+    }
+
     return this.request<any>('/insurances/seguro-veiculo', {
       method: 'POST',
       body: JSON.stringify(simulationData),

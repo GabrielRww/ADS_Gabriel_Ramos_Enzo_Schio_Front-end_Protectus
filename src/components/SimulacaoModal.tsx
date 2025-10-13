@@ -32,6 +32,19 @@ interface FormData {
 }
 
 export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initialTipoSeguro }: SimulacaoModalProps) {
+  // Função para formatar valores em formato brasileiro
+  const formatCurrency = (value: any): string => {
+    if (!value || value === 'A calcular') return 'A calcular';
+    
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(numValue)) return 'A calcular';
+    
+    return numValue.toLocaleString('pt-BR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    });
+  };
+
   const [currentStep, setCurrentStep] = useState(1);
   const [tipoSeguro, setTipoSeguro] = useState<'veiculo' | 'residencial' | 'celular' | ''>('');
   const [formData, setFormData] = useState<FormData>({
@@ -40,6 +53,12 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
     telefone: '',
     cpf: '',
   });
+  
+  // Estados para o fluxo de simulação -> resultado -> contratação
+  const [simulationResult, setSimulationResult] = useState<any>(null);
+  const [showResult, setShowResult] = useState(false);
+  const [contractingLoading, setContractingLoading] = useState(false);
+  
   const { toast } = useToast();
   const { simulate, loading: simulationLoading } = useSimulation();
   const { isAuthenticated, user } = useAuthStore();
@@ -445,7 +464,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           
           toast({
             title: `Valor FIPE encontrado! (${fonte})`,
-            description: `${marcaNome} ${modeloNome} ${ano}: ${valorFipe}`,
+            description: `${marcaNome} ${modeloNome} ${ano}: R$ ${formatCurrency(valorFipe)}`,
           });
         } else {
           console.warn('⚠️ FIPE não retornou valor válido:', JSON.stringify(fipeResponse, null, 2));
@@ -592,6 +611,74 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
     }
   };
 
+  // Função para aceitar a contratação (enviar com status=1)
+  const handleAcceptContract = async () => {
+    if (!simulationResult?.originalData) return;
+    
+    setContractingLoading(true);
+    try {
+      // Enviar dados com status=1 para efetivar contratação
+      const contractData = {
+        ...simulationResult.originalData,
+        status: 1 // Status 1 = contratação confirmada
+      };
+      
+      console.log('✅ Confirmando contratação:', contractData);
+      
+      const result = await simulate(contractData);
+      
+      if (result) {
+        toast({
+          title: "Contratação realizada com sucesso!",
+          description: "Seu seguro foi contratado. Em breve você receberá mais informações.",
+        });
+        
+        // Reset e fechar modal
+        handleCloseModal();
+      } else {
+        toast({
+          title: "Erro na contratação",
+          description: "Não foi possível finalizar a contratação. Tente novamente.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erro na contratação:', error);
+      toast({
+        title: "Erro na contratação",
+        description: "Ocorreu um erro ao finalizar a contratação.",
+        variant: "destructive"
+      });
+    } finally {
+      setContractingLoading(false);
+    }
+  };
+  
+  // Função para recusar a proposta
+  const handleRejectContract = () => {
+    setShowResult(false);
+    setSimulationResult(null);
+    toast({
+      title: "Proposta recusada",
+      description: "Você pode fazer uma nova simulação a qualquer momento.",
+    });
+  };
+  
+  // Função para resetar modal completamente
+  const handleCloseModal = () => {
+    setCurrentStep(1);
+    setTipoSeguro('');
+    setFormData({
+      nome: '',
+      email: '',
+      telefone: '',
+      cpf: '',
+    });
+    setShowResult(false);
+    setSimulationResult(null);
+    onOpenChange(false);
+  };
+
   const handleSubmit = async () => {
     try {
       // Validação dos dados antes do envio
@@ -627,14 +714,25 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
 
       // Adicionar dados específicos por tipo
       if (tipoSeguro === 'veiculo') {
-        // Formato esperado pelo backend PostSeguroVeiculoDto
+        // Formato esperado pelo backend PostSeguroVeiculoDto - status=0 para simulação
+        // Função para limpar e converter valor mantendo decimais
+        const cleanValue = (value: any): number => {
+          if (!value) return 0;
+          // Remove apenas R$, espaços e outros caracteres, mantendo números, vírgulas e pontos
+          const cleanedValue = String(value)
+            .replace(/[R$\s]/g, '') // Remove R$ e espaços
+            .replace(/\./g, '') // Remove pontos de milhares
+            .replace(',', '.'); // Converte vírgula decimal para ponto
+          return parseFloat(cleanedValue) || 0;
+        };
+
         simulationData = {
           placa: formData.placa,
           idVeiculo: formData.idVeiculo || 1, // Usar o ID do veículo da consulta FIPE
-          cpfCliente: formData.cpf,
+          cpfCliente: formData.cpf.replace(/[^\d]/g, ''), // Remove formatação do CPF, deixa só números
           idSeguro: 1, // ID do tipo de seguro (veículo)
-          vlrVeiculo: parseFloat(String(formData.valorVeiculo).replace(/[^\d,]/g, '').replace(',', '.')) || 0,
-          status: 0, // Status inicial
+          vlrVeiculo: cleanValue(formData.valorVeiculo),
+          status: 0, // Status 0 = apenas simulação, não contrata
         };
         
         console.log('🚗 Dados da simulação de veículo:', simulationData);
@@ -651,27 +749,26 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       const result = await simulate(simulationData);
       
       if (result) {
+        // Guardar resultado da simulação e mostrar tela de confirmação
+        setSimulationResult({
+          ...result,
+          originalData: simulationData, // Guardar dados originais para enviar depois
+          formData: { ...formData }, // Guardar dados do formulário
+          valorSeguro: result.vlrSeguro || result.value || 'A calcular'
+        });
+        setShowResult(true);
+        
         toast({
-          title: "Simulação realizada com sucesso!",
-          description: `Valor estimado: R$ ${result.value || 'A calcular'}`,
+          title: "Simulação calculada!",
+          description: "Confira os valores e confirme sua contratação.",
         });
       } else {
         toast({
-          title: "Simulação enviada!",
-          description: "Em breve entraremos em contato para análise da sua proposta.",
+          title: "Erro na simulação",
+          description: "Não foi possível calcular o valor do seguro. Tente novamente.",
+          variant: "destructive"
         });
       }
-      
-      // Reset form and close modal
-      setCurrentStep(1);
-      setTipoSeguro('');
-      setFormData({
-        nome: '',
-        email: '',
-        telefone: '',
-        cpf: '',
-      });
-      onOpenChange(false);
     } catch (error) {
       toast({
         title: "Erro ao enviar simulação",
@@ -941,7 +1038,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   <Label htmlFor="valor-veiculo">Valor do Veículo (FIPE)</Label>
                   <Input
                     id="valor-veiculo"
-                    value={formData.valorVeiculo || ''}
+                    value={formData.valorVeiculo ? `R$ ${formatCurrency(formData.valorVeiculo)}` : ''}
                     onChange={(e) => handleInputChange('valorVeiculo', e.target.value)}
                     placeholder="Consultando FIPE..."
                     readOnly
@@ -1127,14 +1224,113 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleCloseModal}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {getStepIcon(currentStep)}
-            Simulação de Seguro {tipoSeguro ? (tipoSeguro === 'veiculo' ? 'Veicular' : tipoSeguro === 'residencial' ? 'Residencial' : 'Celular') : ''}
-          </DialogTitle>
-        </DialogHeader>
+        {/* Tela de Resultado da Simulação */}
+        {showResult && simulationResult ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle className="h-6 w-6 text-green-500" />
+                Resultado da Simulação
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Card com valor do seguro */}
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 p-6 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    Valor do Seu Seguro
+                  </h3>
+                  <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-4">
+                    R$ {formatCurrency(simulationResult.valorSeguro)}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Valor mensal do seguro calculado
+                  </p>
+                </div>
+              </div>
+
+              {/* Resumo dos dados */}
+              <div className="space-y-4">
+                <h4 className="font-semibold">Resumo da Proposta:</h4>
+                
+                {tipoSeguro === 'veiculo' && (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Veículo:</span>
+                      <p className="font-medium">
+                        {marcas.find(m => String(m.id) === String(simulationResult.formData.marca))?.nome} {' '}
+                        {modelos.find(m => String(m.id) === String(simulationResult.formData.modelo))?.nome} {' '}
+                        {simulationResult.formData.ano}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Placa:</span>
+                      <p className="font-medium">{simulationResult.formData.placa}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Valor FIPE:</span>
+                      <p className="font-medium">R$ {formatCurrency(simulationResult.formData.valorVeiculo)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Uso:</span>
+                      <p className="font-medium">{simulationResult.formData.uso}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t">
+                  <span className="text-muted-foreground">Cliente:</span>
+                  <p className="font-medium">
+                    {simulationResult.formData.nome} - {simulationResult.formData.cpf}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {simulationResult.formData.email} • {simulationResult.formData.telefone}
+                  </p>
+                </div>
+              </div>
+
+              {/* Botões de ação */}
+              <div className="flex gap-4 pt-4">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={handleRejectContract}
+                  disabled={contractingLoading}
+                >
+                  Recusar Proposta
+                </Button>
+                <Button 
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  onClick={handleAcceptContract}
+                  disabled={contractingLoading}
+                >
+                  {contractingLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Contratando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Aceitar e Contratar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Tela Normal de Simulação */
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {getStepIcon(currentStep)}
+                Simulação de Seguro {tipoSeguro ? (tipoSeguro === 'veiculo' ? 'Veicular' : tipoSeguro === 'residencial' ? 'Residencial' : 'Celular') : ''}
+              </DialogTitle>
+            </DialogHeader>
 
         <div className="space-y-6">
           {/* Progress Bar */}
@@ -1198,11 +1394,13 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               </Button>
             ) : (
               <Button onClick={handleSubmit} disabled={simulationLoading}>
-                {simulationLoading ? 'Enviando...' : 'Enviar Simulação'}
+                {simulationLoading ? 'Calculando...' : 'Calcular Seguro'}
               </Button>
             )}
           </div>
         </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
