@@ -26,8 +26,9 @@ interface FormData {
   telefone: string;
   cpf: string;
   
-  // Dados específicos do seguro
-  [key: string]: string;
+  // Dados específicos do seguro - usando any para flexibilidade com backend
+  idVeiculo?: number;
+  [key: string]: any;
 }
 
 export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initialTipoSeguro }: SimulacaoModalProps) {
@@ -415,30 +416,46 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         // Mostrar loading
         toast({
           title: "Consultando FIPE...",
-          description: "Buscando valor atualizado do veículo.",
+          description: `Buscando valor para ${marcaNome} ${modeloNome} ${ano}`,
         });
+
+        console.log('🔍 Iniciando consulta FIPE com dados:', { marcaNome, modeloNome, ano });
 
         // Buscar valor real da FIPE
         const fipeResponse = await apiService.getValorFipe({
           marca: marcaNome,
           modelo: modeloNome,
-          ano: ano
+          ano: String(ano)
         });
+        
+        console.log('📊 Resposta completa da FIPE:', JSON.stringify(fipeResponse, null, 2));
         
         if (fipeResponse.success && fipeResponse.data?.valor) {
           const valorFipe = fipeResponse.data.valor;
-          setFormData((prev) => ({ ...prev, valorVeiculo: valorFipe }));
+          const idVeiculo = fipeResponse.data.idVeiculo; // Capturar o ID do veículo
+          const fonte = fipeResponse.data.fonte || 'DESCONHECIDA';
+          
+          console.log('✅ Dados FIPE capturados:', { valorFipe, idVeiculo, fonte });
+          
+          setFormData((prev) => ({ 
+            ...prev, 
+            valorVeiculo: valorFipe,
+            idVeiculo: idVeiculo // Salvar o ID do veículo para usar na simulação
+          }));
           
           toast({
-            title: "Valor FIPE encontrado!",
+            title: `Valor FIPE encontrado! (${fonte})`,
             description: `${marcaNome} ${modeloNome} ${ano}: ${valorFipe}`,
           });
         } else {
+          console.warn('⚠️ FIPE não retornou valor válido:', JSON.stringify(fipeResponse, null, 2));
+          
           // Fallback para simulação se FIPE não estiver disponível
-          console.warn('FIPE não disponível, usando simulação:', fipeResponse.error);
+          const errorMessage = fipeResponse.error || 'Resposta inválida';
+          console.warn('FIPE não disponível, usando simulação. Erro:', errorMessage);
           
           let valorEstimado = '';
-          const anoInt = parseInt(ano);
+          const anoInt = parseInt(String(ano));
           const idadeVeiculo = new Date().getFullYear() - anoInt;
           
           if (idadeVeiculo <= 2) {
@@ -455,19 +472,24 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           
           toast({
             title: "Valor estimado calculado",
-            description: `${marcaNome} ${modeloNome} ${ano}: ${valorEstimado} (FIPE indisponível)`,
+            description: `${marcaNome} ${modeloNome} ${ano}: ${valorEstimado} (FIPE indisponível: ${errorMessage})`,
             variant: "default"
           });
         }
-      } catch (error) {
-        console.error('Erro ao buscar valor do veículo:', error);
+      } catch (error: any) {
+        console.error('❌ Erro crítico ao buscar valor do veículo:', {
+          error: error,
+          message: error?.message || 'unknown',
+          response: error?.response || null,
+          stack: error?.stack || null
+        });
         
         const marcaNome = marcas.find((m) => String(m.id) === String(marca))?.nome || '';
         const modeloNome = modelos.find((m) => String(m.id) === String(modelo))?.nome || '';
         
         // Fallback para simulação em caso de erro
         let valorEstimado = '';
-        const anoInt = parseInt(ano);
+        const anoInt = parseInt(String(ano));
         const idadeVeiculo = new Date().getFullYear() - anoInt;
         
         if (idadeVeiculo <= 2) {
@@ -592,7 +614,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       }
 
       // Preparar dados para envio
-      const simulationData: any = {
+      let simulationData: any = {
         type: tipoSeguro,
         dadosPessoais: {
           nome: formData.nome,
@@ -605,14 +627,17 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
 
       // Adicionar dados específicos por tipo
       if (tipoSeguro === 'veiculo') {
-        simulationData.dadosVeiculo = {
-          marca: marcas.find(m => String(m.id) === String(formData.marca))?.nome,
-          modelo: modelos.find(m => String(m.id) === String(formData.modelo))?.nome,
-          ano: formData.ano,
+        // Formato esperado pelo backend PostSeguroVeiculoDto
+        simulationData = {
           placa: formData.placa,
-          uso: formData.uso,
-          valorVeiculo: formData.valorVeiculo
+          idVeiculo: formData.idVeiculo || 1, // Usar o ID do veículo da consulta FIPE
+          cpfCliente: formData.cpf,
+          idSeguro: 1, // ID do tipo de seguro (veículo)
+          vlrVeiculo: parseFloat(String(formData.valorVeiculo).replace(/[^\d,]/g, '').replace(',', '.')) || 0,
+          status: 0, // Status inicial
         };
+        
+        console.log('🚗 Dados da simulação de veículo:', simulationData);
       } else if (tipoSeguro === 'celular') {
         simulationData.dadosCelular = {
           marca: marcasCelulares.find(m => String(m.id) === String(formData.marcaCelular))?.nome,

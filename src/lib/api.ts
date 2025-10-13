@@ -26,8 +26,8 @@ export interface RegisterRequest {
 
 export interface User {
   id: string;
-  name: string;
   email: string;
+  name?: string; // Adicionando propriedade name que estava sendo usada
   role: 'cliente' | 'funcionario' | 'gerente';
   avatar?: string;
   phone?: string;
@@ -513,7 +513,7 @@ class ApiService {
 
   // Simulação de seguro
   async simulateInsurance(simulationData: any): Promise<ApiResponse<any>> {
-    return this.request<any>('/simulate', {
+    return this.request<any>('/insurances/seguro-veiculo', {
       method: 'POST',
       body: JSON.stringify(simulationData),
     });
@@ -541,7 +541,7 @@ class ApiService {
   async getMarcas(): Promise<ApiResponse<any[]>> {
     const env: any = (import.meta as any).env || {};
     const baseVehicle = (env.VITE_VEHICLE_API_URL as string) || this.baseURL;
-  const marcasPath = (env.VITE_VEHICLE_MARCAS_PATH as string) || '/insurances/marcas';
+    const marcasPath = (env.VITE_VEHICLE_MARCAS_PATH as string) || '/insurances/marcas';
     const url = marcasPath.startsWith('http')
       ? marcasPath
       : `${baseVehicle}${marcasPath.startsWith('/') ? '' : '/'}${marcasPath}`;
@@ -551,7 +551,7 @@ class ApiService {
   async getModelos(params: { marca?: string } = {}): Promise<ApiResponse<any[]>> {
     const env: any = (import.meta as any).env || {};
     const baseVehicle = (env.VITE_VEHICLE_API_URL as string) || this.baseURL;
-  const modelosPath = (env.VITE_VEHICLE_MODELOS_PATH as string) || '/insurances/modelos';
+    const modelosPath = (env.VITE_VEHICLE_MODELOS_PATH as string) || '/insurances/modelos';
     const brandParam = (env.VITE_VEHICLE_PARAM_BRAND as string) || 'marca';
     const qs = params.marca ? `?${brandParam}=${encodeURIComponent(params.marca)}` : '';
     const urlBase = modelosPath.startsWith('http') ? modelosPath : `${baseVehicle}${modelosPath.startsWith('/') ? '' : '/'}${modelosPath}`;
@@ -562,7 +562,7 @@ class ApiService {
   async getAnos(params: { marca?: string; modelo?: string } = {}): Promise<ApiResponse<any[]>> {
     const env: any = (import.meta as any).env || {};
     const baseVehicle = (env.VITE_VEHICLE_API_URL as string) || this.baseURL;
-  const anosPath = (env.VITE_VEHICLE_ANOS_PATH as string) || '/insurances/anos';
+    const anosPath = (env.VITE_VEHICLE_ANOS_PATH as string) || '/insurances/anos';
     const brandParam = (env.VITE_VEHICLE_PARAM_BRAND as string) || 'marca';
     const modelParam = (env.VITE_VEHICLE_PARAM_MODEL as string) || 'modelo';
     const qpMarca = params.marca ? `${brandParam}=${encodeURIComponent(params.marca)}` : '';
@@ -606,19 +606,65 @@ class ApiService {
 
   // Buscar valor FIPE real
   async getValorFipe(params: { marca: string; modelo: string; ano: string }): Promise<ApiResponse<any>> {
+    console.log('🚗 Buscando valor FIPE:', params);
+    
     try {
-      // Primeiro tenta buscar do backend (se tiver endpoint específico)
-      const endpoint = `/insurances/valor-fipe?marca=${encodeURIComponent(params.marca)}&modelo=${encodeURIComponent(params.modelo)}&ano=${encodeURIComponent(params.ano)}`;
+      // Primeiro tenta buscar do backend (endpoint correto conforme backend)
+      // Tenta diferentes formatos de parâmetros
+      const cleanMarca = params.marca.replace(/^(GM\s*-\s*)?/, '').trim(); // Remove "GM - " se presente
+      const cleanModelo = params.modelo.replace(/\s+/g, ' ').trim(); // Normaliza espaços
       
-      const backendResponse = await this.request<any>(endpoint, {
-        method: 'GET',
-      });
+      const endpoints = [
+        `/insurances/veiculo?marca=${encodeURIComponent(params.marca)}&modelo=${encodeURIComponent(params.modelo)}&ano=${encodeURIComponent(params.ano)}`,
+        `/insurances/veiculo?marca=${encodeURIComponent(cleanMarca)}&modelo=${encodeURIComponent(cleanModelo)}&ano=${encodeURIComponent(params.ano)}`,
+      ];
       
-      if (backendResponse.success && backendResponse.data?.valor) {
-        return backendResponse;
+      for (const endpoint of endpoints) {
+        try {
+          console.log('📡 Tentando endpoint do backend:', endpoint);
+          
+          const backendResponse = await this.request<any>(endpoint, {
+            method: 'GET',
+          });
+          
+          console.log(' Resposta do backend:', backendResponse);
+          
+          if (backendResponse.success && backendResponse.data) {
+            // O backend retorna um objeto CatalogoVeiculosEntity com a propriedade "valor"
+            const valorFipe = backendResponse.data.valor;
+            
+            if (valorFipe) {
+              console.log(' Valor FIPE encontrado no backend:', valorFipe);
+              return {
+                success: true,
+                data: {
+                  valor: valorFipe,
+                  marca: params.marca,
+                  modelo: params.modelo,
+                  ano: params.ano,
+                  fonte: 'BACKEND',
+                  ...backendResponse.data // Inclui outros dados que o backend possa retornar
+                }
+              };
+            }
+          }
+        } catch (endpointError: any) {
+          console.log(`❌ Erro no endpoint ${endpoint}:`, {
+            status: endpointError?.response?.status || 'unknown',
+            statusText: endpointError?.response?.statusText || 'unknown',
+            message: endpointError?.message || 'unknown',
+            url: endpointError?.config?.url || endpoint,
+            data: endpointError?.response?.data || null
+          });
+          continue; // Tenta o próximo endpoint
+        }
       }
+      
+      // Se não teve sucesso, loga o motivo
+      console.log('⚠️ Nenhum endpoint do backend retornou valor FIPE válido, tentando API pública...');
     } catch (error) {
-      console.log('Backend FIPE não disponível, tentando API pública...');
+      console.log('❌ Erro geral ao acessar backend FIPE:', error);
+      console.log('🔄 Tentando API pública da FIPE...');
     }
 
     try {
