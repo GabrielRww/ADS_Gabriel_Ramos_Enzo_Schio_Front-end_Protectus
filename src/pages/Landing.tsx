@@ -1,22 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Shield, Car, Home, Smartphone, Star, CheckCircle, Sun, Moon } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useTheme } from 'next-themes';
-import heroImage from '@/assets/hero-insurance.jpg';
+import heroImage from '@/assets/hero-family-protection.jpg';
 import protectusLogo from '@/assets/protectus-logo-complete.png';
 import protectusIcon from '@/assets/protectus-icon.png';
 import SimulacaoModal from '@/components/SimulacaoModal';
-import { useAuthStore } from '@/store/authStore';
-import { useNavigate } from 'react-router-dom';
 
 export default function Landing() {
-  const { theme, setTheme } = useTheme();
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    // Verificar se há tema salvo no localStorage ou preferência do sistema
+    const savedTheme = localStorage.getItem('protectus-theme');
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      return savedTheme;
+    }
+    // Verificar preferência do sistema
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [tipoSeguro, setTipoSeguro] = useState<'veiculo' | 'residencial' | 'celular'>('veiculo');
-  const { isAuthenticated } = useAuthStore();
-  const navigate = useNavigate();
+
+  // Aplicar tema ao documentRoot e salvar no localStorage
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('protectus-theme', theme);
+  }, [theme]);
+
+  // Função para alternar tema
+  const toggleTheme = () => {
+    setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
+  };
   const services = [
     {
       icon: Car,
@@ -75,11 +94,11 @@ export default function Landing() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={toggleTheme}
                 className="relative"
               >
-                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <Sun className={`h-5 w-5 transition-all ${theme === 'dark' ? '-rotate-90 scale-0' : 'rotate-0 scale-100'}`} />
+                <Moon className={`absolute h-5 w-5 transition-all ${theme === 'dark' ? 'rotate-0 scale-100' : 'rotate-90 scale-0'}`} />
                 <span className="sr-only">Alternar tema</span>
               </Button>
               
@@ -95,99 +114,117 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative bg-background py-20 overflow-hidden">
-        {/* Animated Grid Background */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+      <section className="relative bg-gradient-to-br from-background via-background to-primary/5 py-24 overflow-hidden">
+        {/* Enhanced Animated Grid Background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808018_1px,transparent_1px),linear-gradient(to_bottom,#80808018_1px,transparent_1px)] bg-[size:32px_32px] animate-[gradient-shift_20s_ease_infinite]"></div>
         
-        {/* Removed saturated glow effects */}
+        {/* Radial gradient overlays */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-glow-pulse"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-glow-pulse" style={{ animationDelay: '2s' }}></div>
         
         {/* Animated flowing lines */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-shimmer"></div>
-          <div className="absolute top-40 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/15 to-transparent animate-shimmer" style={{ animationDelay: '1s' }}></div>
-          <div className="absolute bottom-32 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-shimmer" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-20 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent animate-shimmer"></div>
+          <div className="absolute top-40 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-shimmer" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute bottom-32 left-0 w-full h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent animate-shimmer" style={{ animationDelay: '2s' }}></div>
         </div>
         
-        {/* Floating particles */}
+        {/* Enhanced floating particles */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 left-[10%] w-2 h-2 bg-primary/40 rounded-full animate-float"></div>
-          <div className="absolute top-40 right-[15%] w-1.5 h-1.5 bg-accent/40 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
-          <div className="absolute bottom-32 left-[20%] w-2 h-2 bg-primary/30 rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
-          <div className="absolute top-1/3 right-[25%] w-1 h-1 bg-primary/40 rounded-full animate-float" style={{ animationDelay: '0.5s' }}></div>
-          <div className="absolute top-[60%] left-[30%] w-1.5 h-1.5 bg-primary/35 rounded-full animate-float" style={{ animationDelay: '3s' }}></div>
-          <div className="absolute bottom-[20%] right-[35%] w-1 h-1 bg-accent/30 rounded-full animate-float" style={{ animationDelay: '2.5s' }}></div>
+          <div className="absolute top-20 left-[10%] w-3 h-3 bg-primary/50 rounded-full animate-float shadow-glow"></div>
+          <div className="absolute top-40 right-[15%] w-2 h-2 bg-accent/50 rounded-full animate-float shadow-glow" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute bottom-32 left-[20%] w-2.5 h-2.5 bg-primary/40 rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-1/3 right-[25%] w-1.5 h-1.5 bg-primary/50 rounded-full animate-float" style={{ animationDelay: '0.5s' }}></div>
+          <div className="absolute top-[60%] left-[30%] w-2 h-2 bg-accent/45 rounded-full animate-float shadow-glow" style={{ animationDelay: '3s' }}></div>
+          <div className="absolute bottom-[20%] right-[35%] w-1.5 h-1.5 bg-primary/40 rounded-full animate-float" style={{ animationDelay: '2.5s' }}></div>
+          <div className="absolute top-[15%] left-[40%] w-2 h-2 bg-accent/35 rounded-full animate-float" style={{ animationDelay: '1.5s' }}></div>
         </div>
         
-        {/* Subtle wave effect */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 opacity-10">
-          <div className="absolute bottom-0 left-0 right-0 h-full bg-gradient-to-t from-primary/20 to-transparent"></div>
+        {/* Elegant wave effect */}
+        <div className="absolute bottom-0 left-0 right-0 h-40 opacity-20">
+          <div className="absolute bottom-0 left-0 right-0 h-full bg-gradient-to-t from-primary/30 via-primary/10 to-transparent"></div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 animate-slide-up">
               <div>
-                <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6 animate-fade-in">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">Mais de 50 mil clientes protegidos</span>
+                </div>
+                <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
                   Proteção que você{' '}
                   <span className="relative inline-block">
-                    <span className="text-primary animate-glow-pulse">confia</span>
-                    <span className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-tech rounded-full"></span>
+                    <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent animate-glow-pulse">confia</span>
+                    <span className="absolute -bottom-2 left-0 w-full h-1.5 bg-gradient-tech rounded-full shadow-glow"></span>
                   </span>
                 </h1>
-                <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+                <p className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed max-w-xl">
                   Seguros personalizados para cada momento da sua vida. 
-                  Simule, contrate e gerencie tudo online de forma simples e segura.
+                  <span className="text-foreground font-semibold"> Simule, contrate e gerencie</span> tudo online de forma simples e segura.
                 </p>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex justify-start">
                 <Button 
                   size="lg" 
-                  className="relative bg-gradient-tech hover:scale-105 shadow-glow hover:shadow-glow-lg transition-all duration-300 group overflow-hidden"
+                  className="relative bg-gradient-tech hover:scale-105 shadow-glow hover:shadow-glow-lg transition-all duration-300 group overflow-hidden h-14 px-8 text-lg"
                   onClick={() => {
-                    if (!isAuthenticated) {
-                      navigate('/login');
-                    } else {
-                      setModalOpen(true);
-                    }
+                    setModalOpen(true);
                   }}
                 >
+                  <Shield className="h-5 w-5 mr-2 relative z-10" />
                   <span className="relative z-10 font-semibold">Simular Agora</span>
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
                 </Button>
               </div>
 
-              <div className="flex items-center space-x-8 pt-8">
+              <div className="flex items-center space-x-8 pt-12">
                 <div className="text-center group cursor-default">
-                  <div className="text-3xl font-bold text-foreground group-hover:text-primary group-hover:scale-110 transition-all">50k+</div>
-                  <div className="text-sm text-muted-foreground">Clientes</div>
+                  <div className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent group-hover:scale-110 transition-all">50k+</div>
+                  <div className="text-sm text-muted-foreground font-medium">Clientes Protegidos</div>
                 </div>
-                <div className="w-px h-8 bg-gradient-to-b from-transparent via-border to-transparent"></div>
+                <div className="w-px h-12 bg-gradient-to-b from-transparent via-primary/50 to-transparent"></div>
                 <div className="text-center group cursor-default">
-                  <div className="text-3xl font-bold text-foreground group-hover:text-primary group-hover:scale-110 transition-all">98%</div>
-                  <div className="text-sm text-muted-foreground">Satisfação</div>
+                  <div className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent group-hover:scale-110 transition-all">98%</div>
+                  <div className="text-sm text-muted-foreground font-medium">Satisfação</div>
                 </div>
-                <div className="w-px h-8 bg-gradient-to-b from-transparent via-border to-transparent"></div>
+                <div className="w-px h-12 bg-gradient-to-b from-transparent via-primary/50 to-transparent"></div>
                 <div className="text-center group cursor-default">
-                  <div className="text-3xl font-bold text-foreground group-hover:text-primary group-hover:scale-110 transition-all">24h</div>
-                  <div className="text-sm text-muted-foreground">Suporte</div>
+                  <div className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent group-hover:scale-110 transition-all">24/7</div>
+                  <div className="text-sm text-muted-foreground font-medium">Suporte Ativo</div>
                 </div>
               </div>
             </div>
             
             <div className="relative animate-scale-in">
-              {/* Main image container - removed green overlays */}
-              <div className="relative rounded-2xl overflow-hidden border border-border shadow-xl hover:shadow-2xl transition-shadow duration-500">
+              {/* Floating badge */}
+              <div className="absolute -top-4 -right-4 z-20 bg-gradient-tech text-primary-foreground px-6 py-3 rounded-full shadow-glow animate-float">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="font-bold">Proteção Garantida</span>
+                </div>
+              </div>
+              
+              {/* Main image container */}
+              <div className="relative rounded-3xl overflow-hidden border-2 border-primary/20 shadow-2xl hover:shadow-glow-lg hover:border-primary/40 transition-all duration-500 group">
                 <img 
                   src={heroImage} 
-                  alt="Proteção e segurança" 
-                  className="w-full"
+                  alt="Proteção e segurança para sua família" 
+                  className="w-full group-hover:scale-105 transition-transform duration-700"
                 />
                 
-                {/* Tech frame effect - subtle corners only */}
-                <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-primary/50 animate-pulse"></div>
-                <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-primary/50 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-                <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-primary/50 animate-pulse" style={{ animationDelay: '1s' }}></div>
-                <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-primary/50 animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+                {/* Enhanced tech frame effect */}
+                <div className="absolute top-6 left-6 w-12 h-12 border-t-2 border-l-2 border-primary/60 animate-pulse group-hover:border-primary transition-colors rounded-tl-lg"></div>
+                <div className="absolute top-6 right-6 w-12 h-12 border-t-2 border-r-2 border-primary/60 animate-pulse group-hover:border-primary transition-colors rounded-tr-lg" style={{ animationDelay: '0.5s' }}></div>
+                <div className="absolute bottom-6 left-6 w-12 h-12 border-b-2 border-l-2 border-primary/60 animate-pulse group-hover:border-primary transition-colors rounded-bl-lg" style={{ animationDelay: '1s' }}></div>
+                <div className="absolute bottom-6 right-6 w-12 h-12 border-b-2 border-r-2 border-primary/60 animate-pulse group-hover:border-primary transition-colors rounded-br-lg" style={{ animationDelay: '1.5s' }}></div>
+                
+                {/* Elegant animated glow on hover */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-primary/0 via-primary/10 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
+                {/* Subtle inner shadow for depth */}
+                <div className="absolute inset-0 shadow-inner"></div>
               </div>
             </div>
           </div>
@@ -195,41 +232,52 @@ export default function Landing() {
       </section>
 
       {/* Services Section */}
-      <section className="py-20 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Nossos Seguros
+      <section className="py-24 bg-gradient-to-b from-background to-muted/20 relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-20">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
+              <span className="text-sm font-semibold text-primary">Proteção Completa</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
+              Nossos <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Seguros</span>
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Encontre a proteção ideal para o que mais importa na sua vida
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Encontre a proteção ideal para o que mais importa na sua vida, com cobertura completa e atendimento 24 horas
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {services.map((service, index) => (
-              <Card key={index} className="relative overflow-hidden hover:shadow-glow transition-all duration-300 group border-primary/10 hover:border-primary/30 bg-card/50 backdrop-blur-sm">
+              <Card key={index} className="relative overflow-hidden hover:shadow-glow-lg hover:-translate-y-2 transition-all duration-500 group border-2 border-primary/10 hover:border-primary/40 bg-gradient-to-br from-card to-card/50 backdrop-blur-sm">
                 {/* Animated gradient border effect */}
-                <div className="absolute inset-0 bg-gradient-tech opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                <div className="absolute inset-0 bg-gradient-tech opacity-0 group-hover:opacity-10 transition-opacity duration-500"></div>
                 
-                {/* Glow effect */}
-                <div className="absolute -inset-0.5 bg-gradient-tech opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300"></div>
+                {/* Enhanced glow effect */}
+                <div className="absolute -inset-1 bg-gradient-tech opacity-0 group-hover:opacity-30 blur-2xl transition-opacity duration-500"></div>
                 
-                <CardContent className="relative p-6">
-                  <div className="w-14 h-14 bg-gradient-tech rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-glow">
-                    <service.icon className="h-7 w-7 text-primary-foreground" />
+                {/* Floating indicator */}
+                <div className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full animate-pulse opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                
+                <CardContent className="relative p-8">
+                  <div className="w-16 h-16 bg-gradient-tech rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-glow">
+                    <service.icon className="h-8 w-8 text-primary-foreground" />
                   </div>
-                  <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                  <h3 className="text-2xl font-bold text-foreground mb-3 group-hover:text-primary transition-colors">
                     {service.title}
                   </h3>
-                  <p className="text-muted-foreground mb-4 leading-relaxed">
+                  <p className="text-muted-foreground mb-6 leading-relaxed">
                     {service.description}
                   </p>
-                  <ul className="space-y-2">
+                  <ul className="space-y-3">
                     {service.features.map((feature, idx) => (
                       <li key={idx} className="flex items-center text-sm group/item">
-                        <CheckCircle className="h-4 w-4 text-primary mr-2 flex-shrink-0 group-hover/item:scale-110 transition-transform" />
-                        <span className="group-hover/item:text-foreground transition-colors">{feature}</span>
+                        <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mr-3 group-hover/item:bg-primary/20 transition-colors">
+                          <CheckCircle className="h-3.5 w-3.5 text-primary group-hover/item:scale-110 transition-transform" />
+                        </div>
+                        <span className="group-hover/item:text-foreground group-hover/item:translate-x-1 transition-all">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -241,30 +289,52 @@ export default function Landing() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              O que nossos clientes dizem
+      <section className="py-24 bg-gradient-to-b from-muted/20 to-background relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(var(--primary-rgb),0.05),transparent_50%)]"></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-20">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-4">
+              <Star className="h-4 w-4 text-accent fill-accent" />
+              <span className="text-sm font-semibold text-accent">Avaliações Reais</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
+              O que nossos <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">clientes</span> dizem
             </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Milhares de clientes satisfeitos com nossos serviços de proteção
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} className="relative overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/20 bg-gradient-to-br from-card to-muted/20">
-                <CardContent className="p-6">
-                  <div className="flex mb-4">
+              <Card key={index} className="relative overflow-hidden hover:shadow-glow hover:-translate-y-1 transition-all duration-500 border-2 border-border/50 hover:border-accent/30 bg-gradient-to-br from-card via-card to-accent/5 backdrop-blur-sm group">
+                {/* Decorative corner */}
+                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-accent/20 to-transparent rounded-bl-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                
+                <CardContent className="p-8 relative">
+                  <div className="flex mb-6 gap-1">
                     {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 fill-accent text-accent animate-pulse" style={{ animationDelay: `${i * 100}ms` }} />
+                      <div key={i} className="relative">
+                        <Star className="h-5 w-5 fill-accent text-accent drop-shadow-glow" />
+                      </div>
                     ))}
                   </div>
-                  <p className="text-muted-foreground mb-4 italic relative">
-                    <span className="text-6xl text-primary/20 absolute -top-4 -left-2">"</span>
-                    {testimonial.text}
+                  <p className="text-muted-foreground mb-6 italic relative leading-relaxed text-base">
+                    <span className="text-7xl text-accent/10 absolute -top-6 -left-4 font-serif">"</span>
+                    <span className="relative z-10">{testimonial.text}</span>
                   </p>
-                  <p className="font-semibold text-foreground">
-                    {testimonial.name}
-                  </p>
+                  <div className="flex items-center gap-3 pt-4 border-t border-border/50">
+                    <div className="w-12 h-12 rounded-full bg-gradient-tech flex items-center justify-center shadow-glow">
+                      <span className="text-primary-foreground font-bold text-lg">{testimonial.name.charAt(0)}</span>
+                    </div>
+                    <div>
+                      <p className="font-bold text-foreground">
+                        {testimonial.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Cliente Protectus</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -307,11 +377,7 @@ export default function Landing() {
             variant="secondary" 
             className="shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 text-lg px-8 py-6 font-semibold"
             onClick={() => {
-              if (!isAuthenticated) {
-                navigate('/login');
-              } else {
-                setModalOpen(true);
-              }
+              setModalOpen(true);
             }}
           >
             Simular Meu Seguro
