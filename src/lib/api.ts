@@ -1,4 +1,62 @@
+// Detecta automaticamente se está usando backend local ou produção
+const isLocalDevelopment = import.meta.env.VITE_API_URL?.includes('localhost') || false;
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://protectus-back-end-production.up.railway.app';
+
+// Função para obter configurações baseadas no ambiente
+const getApiConfig = () => {
+  if (isLocalDevelopment) {
+    return {
+      baseURL: import.meta.env.VITE_LOCAL_API_URL || API_BASE_URL,
+      loginClientePath: import.meta.env.VITE_LOCAL_LOGIN_CLIENTE_PATH || '/auth/login-cliente',
+      loginFuncionarioPath: import.meta.env.VITE_LOCAL_LOGIN_FUNCIONARIO_PATH || '/auth/login-funcionario',
+      
+      // Veículos
+      vehicleMarcasPath: import.meta.env.VITE_LOCAL_VEHICLE_MARCAS_PATH || '/insurances/marcas',
+      vehicleModelosPath: import.meta.env.VITE_LOCAL_VEHICLE_MODELOS_PATH || '/insurances/modelos',
+      vehicleAnosPath: import.meta.env.VITE_LOCAL_VEHICLE_ANOS_PATH || '/insurances/anos',
+      seguroVeiculoPath: import.meta.env.VITE_LOCAL_SEGURO_VEICULO_PATH || '/insurances/seguro-veiculo',
+      
+      // Celulares
+      celularMarcasPath: import.meta.env.VITE_LOCAL_CELULAR_MARCAS_PATH || '/insurances/celulares/marcas',
+      celularModelosPath: import.meta.env.VITE_LOCAL_CELULAR_MODELOS_PATH || '/insurances/celulares/modelos',
+      celularCoresPath: import.meta.env.VITE_LOCAL_CELULAR_CORES_PATH || '/insurances/celulares/cores',
+      seguroCelularPath: import.meta.env.VITE_LOCAL_SEGURO_CELULAR_PATH || '/insurances/seguro-celular',
+      
+      // Residencial
+      seguroResidencialPath: import.meta.env.VITE_LOCAL_SEGURO_RESIDENCIAL_PATH || '/insurances/seguro-residencial',
+      
+      // Usuários
+      usersClientePath: import.meta.env.VITE_LOCAL_USERS_CLIENTE_PATH || '/users/cliente',
+    };
+  }
+  
+  // Configurações de produção (Railway)
+  return {
+    baseURL: API_BASE_URL,
+    loginClientePath: import.meta.env.VITE_LOGIN_CLIENTE_PATH || '/auth/login-cliente',
+    loginFuncionarioPath: import.meta.env.VITE_LOGIN_FUNCIONARIO_PATH || '/auth/login-funcionario',
+    
+    // Veículos
+    vehicleMarcasPath: import.meta.env.VITE_VEHICLE_MARCAS_PATH || '/insurances/marcas',
+    vehicleModelosPath: import.meta.env.VITE_VEHICLE_MODELOS_PATH || '/insurances/modelos',
+    vehicleAnosPath: import.meta.env.VITE_VEHICLE_ANOS_PATH || '/insurances/anos',
+    seguroVeiculoPath: '/insurances/seguro-veiculo',
+    
+    // Celulares (baseados no backend analisado)
+    celularMarcasPath: '/insurances/celulares/marcas',
+    celularModelosPath: '/insurances/celulares/modelos',
+    celularCoresPath: '/insurances/celulares/cores',
+    seguroCelularPath: '/insurances/seguro-celular',
+    
+    // Residencial (preparado para implementação)
+    seguroResidencialPath: '/insurances/seguro-residencial',
+    
+    // Usuários
+    usersClientePath: '/users/cliente',
+  };
+};
+
+const apiConfig = getApiConfig();
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -44,7 +102,7 @@ class ApiService {
   private token: string | null = null;
 
   constructor() {
-    this.baseURL = API_BASE_URL;
+    this.baseURL = apiConfig.baseURL;
     const stored = localStorage.getItem('protectus-token');
     // Sanitiza tokens inválidos ('undefined', 'null', vazio)
     if (!stored || stored === 'undefined' || stored === 'null') {
@@ -158,10 +216,9 @@ class ApiService {
 
   // Autenticação
   async login(credentials: LoginRequest): Promise<ApiResponse<{ user: User; token: string }>> {
-    // Endpoints configuráveis
-    const env: any = (import.meta as any).env || {};
-    const pathCliente = env.VITE_LOGIN_CLIENTE_PATH || '/auth/login-cliente';
-    const pathFuncionario = env.VITE_LOGIN_FUNCIONARIO_PATH || '/auth/login-funcionario';
+    // Usa configurações dinâmicas baseadas no ambiente
+    const pathCliente = apiConfig.loginClientePath;
+    const pathFuncionario = apiConfig.loginFuncionarioPath;
 
     // Backend espera apenas { email, senha }
     const payload = { email: credentials.email, senha: credentials.password };
@@ -210,7 +267,7 @@ class ApiService {
       status: 1, // Garante que o cliente fica ativo imediatamente
     };
 
-    const resp = await this.request<any>('/users/cliente', {
+    const resp = await this.request<any>(apiConfig.usersClientePath, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -519,7 +576,7 @@ class ApiService {
         console.log('👤 Verificando cliente CPF:', simulationData.cpfCliente);
         
         // Primeiro verifica se o cliente já existe
-        const existingClient = await this.request<any>(`/users/cliente?cpf=${simulationData.cpfCliente}`, {
+        const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
           method: 'GET',
         });
         
@@ -537,7 +594,7 @@ class ApiService {
             status: 1
           };
           
-          await this.request<any>('/users/cliente', {
+          await this.request<any>(apiConfig.usersClientePath, {
             method: 'POST',
             body: JSON.stringify(clientData),
           });
@@ -549,7 +606,7 @@ class ApiService {
       }
     }
 
-    return this.request<any>('/insurances/seguro-veiculo', {
+    return this.request<any>(apiConfig.seguroVeiculoPath, {
       method: 'POST',
       body: JSON.stringify(simulationData),
     });
@@ -577,7 +634,7 @@ class ApiService {
   async getMarcas(): Promise<ApiResponse<any[]>> {
     const env: any = (import.meta as any).env || {};
     const baseVehicle = (env.VITE_VEHICLE_API_URL as string) || this.baseURL;
-    const marcasPath = (env.VITE_VEHICLE_MARCAS_PATH as string) || '/insurances/marcas';
+    const marcasPath = apiConfig.vehicleMarcasPath;
     const url = marcasPath.startsWith('http')
       ? marcasPath
       : `${baseVehicle}${marcasPath.startsWith('/') ? '' : '/'}${marcasPath}`;
@@ -587,7 +644,7 @@ class ApiService {
   async getModelos(params: { marca?: string } = {}): Promise<ApiResponse<any[]>> {
     const env: any = (import.meta as any).env || {};
     const baseVehicle = (env.VITE_VEHICLE_API_URL as string) || this.baseURL;
-    const modelosPath = (env.VITE_VEHICLE_MODELOS_PATH as string) || '/insurances/modelos';
+    const modelosPath = apiConfig.vehicleModelosPath;
     const brandParam = (env.VITE_VEHICLE_PARAM_BRAND as string) || 'marca';
     const qs = params.marca ? `?${brandParam}=${encodeURIComponent(params.marca)}` : '';
     const urlBase = modelosPath.startsWith('http') ? modelosPath : `${baseVehicle}${modelosPath.startsWith('/') ? '' : '/'}${modelosPath}`;
@@ -598,7 +655,7 @@ class ApiService {
   async getAnos(params: { marca?: string; modelo?: string } = {}): Promise<ApiResponse<any[]>> {
     const env: any = (import.meta as any).env || {};
     const baseVehicle = (env.VITE_VEHICLE_API_URL as string) || this.baseURL;
-    const anosPath = (env.VITE_VEHICLE_ANOS_PATH as string) || '/insurances/anos';
+    const anosPath = apiConfig.vehicleAnosPath;
     const brandParam = (env.VITE_VEHICLE_PARAM_BRAND as string) || 'marca';
     const modelParam = (env.VITE_VEHICLE_PARAM_MODEL as string) || 'modelo';
     const qpMarca = params.marca ? `${brandParam}=${encodeURIComponent(params.marca)}` : '';
@@ -609,15 +666,16 @@ class ApiService {
     return this.request<any[]>(url, { headers: this.buildVehicleHeaders() });
   }
 
-  // Catálogo de celulares
+  // Catálogo de celulares (baseado no backend analisado)
   async getMarcasCelulares(): Promise<ApiResponse<any[]>> {
-    return this.request<any[]>('/insurances/celulares/marcas', {
+    return this.request<any[]>(apiConfig.celularMarcasPath, {
       method: 'GET',
+      headers: this.buildVehicleHeaders()
     });
   }
 
   async getModelosCelulares(params: { marca?: string } = {}): Promise<ApiResponse<any[]>> {
-    let endpoint = '/insurances/celulares/modelos';
+    let endpoint = apiConfig.celularModelosPath;
     if (params.marca) {
       const queryParams = new URLSearchParams();
       queryParams.append('marca', params.marca);
@@ -625,11 +683,12 @@ class ApiService {
     }
     return this.request<any[]>(endpoint, {
       method: 'GET',
+      headers: this.buildVehicleHeaders()
     });
   }
 
   async getCoresCelulares(params: { marca?: string; modelo?: string } = {}): Promise<ApiResponse<any[]>> {
-    let endpoint = '/insurances/celulares/cores';
+    let endpoint = apiConfig.celularCoresPath;
     const queryParams = new URLSearchParams();
     if (params.marca) queryParams.append('marca', params.marca);
     if (params.modelo) queryParams.append('modelo', params.modelo);
@@ -637,6 +696,91 @@ class ApiService {
     
     return this.request<any[]>(endpoint, {
       method: 'GET',
+      headers: this.buildVehicleHeaders()
+    });
+  }
+
+  // Simulação de seguro de celular
+  async simulateCellphoneInsurance(simulationData: any): Promise<ApiResponse<any>> {
+    // Primeiro, verificar/criar cliente se temos CPF
+    if (simulationData.cpfCliente) {
+      try {
+        console.log('👤 Verificando cliente CPF:', simulationData.cpfCliente);
+        
+        const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
+          method: 'GET',
+        });
+        
+        if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
+          console.log('✅ Cliente já existe, continuando com simulação');
+        } else {
+          console.log('👤 Cliente não encontrado, criando novo...');
+          const clientData = {
+            cpf: simulationData.cpfCliente,
+            nome: 'Cliente Simulação',
+            email: 'cliente@simulacao.com',
+            telefone: '00000000000',
+            cep: '00000000',
+            senha: '123456',
+            status: 1
+          };
+          
+          await this.request<any>(apiConfig.usersClientePath, {
+            method: 'POST',
+            body: JSON.stringify(clientData),
+          });
+          console.log('✅ Cliente criado com sucesso');
+        }
+      } catch (clientError) {
+        console.log('⚠️ Erro ao verificar/criar cliente (continuando):', clientError);
+      }
+    }
+
+    return this.request<any>(apiConfig.seguroCelularPath, {
+      method: 'POST',
+      body: JSON.stringify(simulationData),
+    });
+  }
+
+  // Simulação de seguro residencial
+  async simulateResidentialInsurance(simulationData: any): Promise<ApiResponse<any>> {
+    // Primeiro, verificar/criar cliente se temos CPF
+    if (simulationData.cpfCliente) {
+      try {
+        console.log('👤 Verificando cliente CPF:', simulationData.cpfCliente);
+        
+        const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
+          method: 'GET',
+        });
+        
+        if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
+          console.log('✅ Cliente já existe, continuando com simulação');
+        } else {
+          console.log('👤 Cliente não encontrado, criando novo...');
+          const clientData = {
+            cpf: simulationData.cpfCliente,
+            nome: 'Cliente Simulação',
+            email: 'cliente@simulacao.com',
+            telefone: '00000000000',
+            cep: '00000000',
+            senha: '123456',
+            status: 1
+          };
+          
+          await this.request<any>(apiConfig.usersClientePath, {
+            method: 'POST',
+            body: JSON.stringify(clientData),
+          });
+          console.log('✅ Cliente criado com sucesso');
+        }
+      } catch (clientError) {
+        console.log('⚠️ Erro ao verificar/criar cliente (continuando):', clientError);
+      }
+    }
+
+    return this.request<any>(apiConfig.seguroResidencialPath, {
+      method: 'POST',
+      body: JSON.stringify(simulationData),
     });
   }
 

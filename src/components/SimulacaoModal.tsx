@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useSimulation } from '@/hooks/useApi';
+import { useSimulation, useCellphoneSimulation, useResidentialSimulation } from '@/hooks/useApi';
 import { ChevronLeft, ChevronRight, User, FileText, Car, Home, Smartphone, CheckCircle, Edit } from 'lucide-react';
 import { apiService } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface ImportMetaEnv {
+  [key: string]: string | boolean | undefined;
+}
+
+interface ImportMeta {
+  env: ImportMetaEnv;
+}
+
+interface User {
+  id?: string;
+  phone?: string;
+  telefone?: string;
+  cpf?: string;
+  nome?: string;
+  email?: string;
+  [key: string]: unknown;
+}
 
 interface SimulacaoModalProps {
   open: boolean;
@@ -26,14 +49,62 @@ interface FormData {
   telefone: string;
   cpf: string;
   
-  // Dados específicos do seguro - usando any para flexibilidade com backend
+  // Dados específicos do seguro
+  marca?: string;
+  modelo?: string;
+  ano?: string;
+  marcaCelular?: string;
+  modeloCelular?: string;
+  corCelular?: string;
+  valorImovel?: string;
+  tipoImovel?: string;
+  localidade?: string;
+  valorBem?: number;
   idVeiculo?: number;
-  [key: string]: any;
+  [key: string]: string | number | undefined;
+}
+
+interface CatalogItem {
+  id?: string;
+  nome?: string | { descricao?: string; name?: string; valor?: string };
+  codigo?: string;
+  valor?: string;
+  preco?: string;
+  marca?: string;
+  modelo?: string | { descricao?: string; name?: string };
+  ano?: string;
+  cor?: string;
+  value?: string;
+  cod?: string;
+  sigla?: string;
+  code?: string;
+  key?: string;
+  label?: string | { pt?: string; value?: string };
+  descricao?: string;
+  description?: string;
+  name?: string | { pt?: string; descricao?: string; name?: string; valor?: string; value?: string };
+  title?: string;
+  year?: string;
+  modelo_ano?: string;
+  anoModelo?: string;
+  [key: string]: unknown;
+}
+
+interface SimulationResult {
+  id?: string;
+  valor?: number;
+  premio?: number;
+  valorPremio?: number;
+  valorBem?: number;
+  valorSeguro?: number;
+  detalhes?: Record<string, unknown>;
+  originalData?: FormData;
+  formData?: FormData;
 }
 
 export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initialTipoSeguro }: SimulacaoModalProps) {
   // Função para formatar valores em formato brasileiro
-  const formatCurrency = (value: any): string => {
+  const formatCurrency = (value: string | number | null | undefined): string => {
     if (!value || value === 'A calcular') return 'A calcular';
     
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
@@ -55,18 +126,34 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   });
   
   // Estados para o fluxo de simulação -> resultado -> contratação
-  const [simulationResult, setSimulationResult] = useState<any>(null);
+  const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [contractingLoading, setContractingLoading] = useState(false);
   
   const { toast } = useToast();
   const { simulate, loading: simulationLoading } = useSimulation();
+  const { simulate: simulateCellphone, loading: cellphoneLoading } = useCellphoneSimulation();
+  const { simulate: simulateResidential, loading: residentialLoading } = useResidentialSimulation();
   const { isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
   const prefilledRef = useRef(false);
 
+  // Definir loading baseado no tipo de seguro
+  const currentLoading = useMemo(() => {
+    switch (tipoSeguro) {
+      case 'veiculo':
+        return simulationLoading;
+      case 'celular':
+        return cellphoneLoading;
+      case 'residencial':
+        return residentialLoading;
+      default:
+        return false;
+    }
+  }, [tipoSeguro, simulationLoading, cellphoneLoading, residentialLoading]);
+
   // Helper para normalizar opções { id, nome } evitando [object Object]
-  const toOption = (m: any) => {
+  const toOption = (m: CatalogItem): SelectOption => {
     const idCandidate = m?.id ?? m?.value ?? m?.codigo ?? m?.cod ?? m?.sigla ?? m?.code ?? m?.key;
     const id = idCandidate != null && idCandidate !== ''
       ? String(idCandidate)
@@ -74,7 +161,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         ? String(m)
         : (['id','codigo','cod','code','key'].find((k) => m && m[k] != null) ? String(m[(['id','codigo','cod','code','key'].find((k) => m && m[k] != null)) as string]) : JSON.stringify(m));
 
-    const nameCandidates: any[] = [
+    const nameCandidates: string[] = [
       m?.nome,
       m?.nome?.descricao,
       m?.nome?.name,
@@ -100,11 +187,11 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         nome = firstString || `[${id}]`;
       }
     }
-    return { id, nome };
+    return { value: id, label: nome || id || 'Sem nome' };
   };
 
   // Helper específico para anos: tenta extrair um número e usá-lo como id e nome
-  const toYearOption = (m: any) => {
+  const toYearOption = (m: CatalogItem): SelectOption => {
     let year: string | null = null;
     if (typeof m === 'number') year = String(m);
     else if (typeof m === 'string') {
@@ -127,7 +214,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       }
     }
     if (!year) return toOption(m); // fallback genérico
-    return { id: year, nome: year };
+    return { value: year, label: year };
   };
   // Catálogo veicular dinâmico
   const [marcas, setMarcas] = useState<Array<{ id: string | number; nome: string }>>([]);
@@ -174,8 +261,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   // Prefill de dados pessoais quando autenticado e modal abrir
   useEffect(() => {
     if (open && isAuthenticated && user && !prefilledRef.current) {
-      const rawPhone = (user as any).phone || (user as any).telefone || '';
-      const rawCpf = (user as any).cpf || '';
+      const rawPhone = (user as unknown as User).phone || (user as unknown as User).telefone || '';
+      const rawCpf = (user as unknown as User).cpf || '';
       const onlyDigits = (v: string) => v.replace(/\D/g, '');
       const fmtPhone = (v: string) => {
         const d = onlyDigits(v).slice(0, 11);
@@ -195,12 +282,12 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       (async () => {
         try {
           if (!rawPhone || !rawCpf) {
-            const env: any = (import.meta as any).env || {};
+            const env = (import.meta as ImportMeta).env || {};
             const enabled = String(env.VITE_PROFILE_API) === 'true' && !!env.VITE_PROFILE_CLIENTE_GET_PATH;
             if (!enabled) return;
             const profile = await apiService.fetchClienteProfile({ id: user.id, email: user.email });
             if (profile.success && profile.data) {
-              const p: any = profile.data;
+              const p = profile.data as User;
               const phoneFmt = p.phone ? fmtPhone(String(p.phone)) : '';
               const cpfFmt = p.cpf ? fmtCpf(String(p.cpf)) : '';
               setFormData((prev) => ({
@@ -210,7 +297,9 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               }));
             }
           }
-        } catch {}
+        } catch (error) {
+          console.log('Erro ao carregar perfil:', error);
+        }
       })();
     }
   }, [open, isAuthenticated, user]);
@@ -495,12 +584,12 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
             variant: "default"
           });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('❌ Erro crítico ao buscar valor do veículo:', {
           error: error,
-          message: error?.message || 'unknown',
-          response: error?.response || null,
-          stack: error?.stack || null
+          message: (error as Error)?.message || 'unknown',
+          response: (error as { response?: unknown })?.response || null,
+          stack: (error as Error)?.stack || null
         });
         
         const marcaNome = marcas.find((m) => String(m.id) === String(marca))?.nome || '';
@@ -625,7 +714,22 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       
       console.log('✅ Confirmando contratação:', contractData);
       
-      const result = await simulate(contractData);
+      // Escolher a função de contratação correta baseada no tipo de seguro
+      let result;
+      if (tipoSeguro === 'veiculo') {
+        result = await simulate(contractData);
+      } else if (tipoSeguro === 'celular') {
+        result = await simulateCellphone(contractData);
+      } else if (tipoSeguro === 'residencial') {
+        result = await simulateResidential(contractData);
+      } else {
+        toast({
+          title: "Tipo de seguro inválido",
+          description: "Por favor, selecione um tipo de seguro válido.",
+          variant: "destructive"
+        });
+        return;
+      }
       
       if (result) {
         toast({
@@ -704,7 +808,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       }
 
       // Preparar dados para envio
-      let simulationData: any = {
+      let simulationData: Record<string, unknown> = {
         type: tipoSeguro,
         dadosPessoais: {
           nome: formData.nome,
@@ -719,7 +823,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       if (tipoSeguro === 'veiculo') {
         // Formato esperado pelo backend PostSeguroVeiculoDto - status=0 para simulação
         // Função para limpar e converter valor mantendo decimais
-        const cleanValue = (value: any): number => {
+        const cleanValue = (value: string | number | null | undefined): number => {
           if (!value) return 0;
           // Remove apenas R$, espaços e outros caracteres, mantendo números, vírgulas e pontos
           const cleanedValue = String(value)
@@ -750,7 +854,22 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         };
       }
 
-      const result = await simulate(simulationData);
+      // Escolher a função de simulação correta baseada no tipo de seguro
+      let result;
+      if (tipoSeguro === 'veiculo') {
+        result = await simulate(simulationData);
+      } else if (tipoSeguro === 'celular') {
+        result = await simulateCellphone(simulationData);
+      } else if (tipoSeguro === 'residencial') {
+        result = await simulateResidential(simulationData);
+      } else {
+        toast({
+          title: "Tipo de seguro inválido",
+          description: "Por favor, selecione um tipo de seguro válido.",
+          variant: "destructive"
+        });
+        return;
+      }
       
       if (result) {
         // Guardar resultado da simulação e mostrar tela de confirmação
@@ -900,7 +1019,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           </div>
         );
 
-      case 2:
+      case 2: {
         if (!tipoSeguro) return null;
         const seguroInfo = segurosInfo[tipoSeguro];
         return (
@@ -931,8 +1050,9 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
             </Card>
           </div>
         );
+      }
 
-      case 3:
+      case 3: {
         return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -979,15 +1099,16 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
             </div>
           </div>
         );
+      }
 
-      case 4:
+      case 4: {
         if (tipoSeguro === 'veiculo') {
           return (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="marca">Marca *</Label>
-                  <Select disabled={!isAuthenticated || loadingCatalog.marcas} value={(formData.marca as any) || ''} onValueChange={(value) => handleInputChange('marca', value)}>
+                  <Select disabled={!isAuthenticated || loadingCatalog.marcas} value={formData.marca || ''} onValueChange={(value) => handleInputChange('marca', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder={!isAuthenticated ? 'Faça login para carregar marcas' : (loadingCatalog.marcas ? 'Carregando marcas...' : 'Selecione a marca')} />
                     </SelectTrigger>
@@ -1001,7 +1122,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                 
                 <div className="space-y-2">
                   <Label htmlFor="modelo">Modelo *</Label>
-                  <Select disabled={!isAuthenticated || !formData.marca || loadingCatalog.modelos} value={(formData.modelo as any) || ''} onValueChange={(value) => handleInputChange('modelo', value)}>
+                  <Select disabled={!isAuthenticated || !formData.marca || loadingCatalog.modelos} value={formData.modelo || ''} onValueChange={(value) => handleInputChange('modelo', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder={!isAuthenticated ? 'Faça login primeiro' : (!formData.marca ? 'Selecione a marca primeiro' : (loadingCatalog.modelos ? 'Carregando modelos...' : 'Selecione o modelo'))} />
                     </SelectTrigger>
@@ -1015,7 +1136,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                 
                 <div className="space-y-2">
                   <Label htmlFor="ano">Ano *</Label>
-                  <Select disabled={!isAuthenticated || !formData.modelo || loadingCatalog.anos || anos.length === 0} value={(formData.ano as any) || ''} onValueChange={(value) => handleInputChange('ano', value)}>
+                  <Select disabled={!isAuthenticated || !formData.modelo || loadingCatalog.anos || anos.length === 0} value={formData.ano || ''} onValueChange={(value) => handleInputChange('ano', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder={!isAuthenticated ? 'Faça login primeiro' : (!formData.modelo ? 'Selecione o modelo primeiro' : (loadingCatalog.anos ? 'Carregando anos...' : (anos.length ? 'Ano do veículo' : 'Nenhum ano disponível')))} />
                     </SelectTrigger>
@@ -1055,7 +1176,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                 
                 <div className="space-y-2">
                   <Label htmlFor="uso">Uso do veículo *</Label>
-                  <Select value={formData.uso || ''} onValueChange={(value) => handleInputChange('uso', value)}>
+                  <Select value={String(formData.uso || '')} onValueChange={(value) => handleInputChange('uso', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Como usa o veículo?" />
                     </SelectTrigger>
@@ -1220,7 +1341,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
             </div>
           );
         }
-
+        return null;
+      }
 
       default:
         return null;
@@ -1419,8 +1541,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                 <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit} disabled={simulationLoading}>
-                {simulationLoading ? 'Calculando...' : 'Calcular Seguro'}
+              <Button onClick={handleSubmit} disabled={currentLoading}>
+                {currentLoading ? 'Calculando...' : 'Calcular Seguro'}
               </Button>
             )}
           </div>

@@ -31,3 +31,55 @@ export function useSimulation() {
 
   return { simulate, loading, error };
 }
+
+// Hook para simulação de seguro de celular
+export function useCellphoneSimulation() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const simulate = useCallback(async (payload: any): Promise<SimulationResult | null> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await apiService.simulateCellphoneInsurance(payload);
+      if (resp.success) {
+        return (resp.data as SimulationResult) ?? {};
+      }
+      setError(resp.error || 'Falha na simulação de celular');
+      return null;
+    } catch (e: any) {
+      setError(e?.message || 'Erro inesperado na simulação de celular');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { simulate, loading, error };
+}
+
+// Hook para simulação de seguro residencial
+export function useResidentialSimulation() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const simulate = useCallback(async (payload: any): Promise<SimulationResult | null> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await apiService.simulateResidentialInsurance(payload);
+      if (resp.success) {
+        return (resp.data as SimulationResult) ?? {};
+      }
+      setError(resp.error || 'Falha na simulação residencial');
+      return null;
+    } catch (e: any) {
+      setError(e?.message || 'Erro inesperado na simulação residencial');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { simulate, loading, error };
+}
