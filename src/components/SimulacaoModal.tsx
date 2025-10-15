@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useSimulation } from '@/hooks/useApi';
-import { ChevronLeft, ChevronRight, User, FileText, Car, Home, Smartphone, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, User, FileText, Car, Home, Smartphone, CheckCircle, Edit } from 'lucide-react';
 import { apiService } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 
@@ -654,13 +654,16 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
     }
   };
   
-  // Função para recusar a proposta
+  // Função para editar/refazer a simulação
   const handleRejectContract = () => {
+    // Voltar para o formulário permitindo nova simulação
     setShowResult(false);
     setSimulationResult(null);
+    setCurrentStep(2); // Voltar para o step do formulário de veículo
+    
     toast({
-      title: "Proposta recusada",
-      description: "Você pode fazer uma nova simulação a qualquer momento.",
+      title: "Editando simulação",
+      description: "Você pode alterar os dados e fazer uma nova simulação.",
     });
   };
   
@@ -733,6 +736,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           idSeguro: 1, // ID do tipo de seguro (veículo)
           vlrVeiculo: cleanValue(formData.valorVeiculo),
           status: 0, // Status 0 = apenas simulação, não contrata
+          simulationId: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // ID único para simulação
         };
         
         console.log('🚗 Dados da simulação de veículo:', simulationData);
@@ -1293,31 +1297,53 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               </div>
 
               {/* Botões de ação */}
-              <div className="flex gap-4 pt-4">
+              <div className="flex flex-col gap-3 pt-4">
+                {/* Primeira linha: Editar e Aceitar */}
+                <div className="flex gap-4">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={handleRejectContract}
+                    disabled={contractingLoading}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar Simulação
+                  </Button>
+                  <Button 
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={handleAcceptContract}
+                    disabled={contractingLoading}
+                  >
+                    {contractingLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Contratando...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Aceitar e Contratar
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                {/* Segunda linha: Recusar */}
                 <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={handleRejectContract}
+                  variant="ghost" 
+                  className="w-full text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setShowResult(false);
+                    setSimulationResult(null);
+                    handleCloseModal();
+                    toast({
+                      title: "Simulação cancelada",
+                      description: "Você pode fazer uma nova simulação a qualquer momento.",
+                    });
+                  }}
                   disabled={contractingLoading}
                 >
                   Recusar Proposta
-                </Button>
-                <Button 
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                  onClick={handleAcceptContract}
-                  disabled={contractingLoading}
-                >
-                  {contractingLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Contratando...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Aceitar e Contratar
-                    </>
-                  )}
                 </Button>
               </div>
             </div>
