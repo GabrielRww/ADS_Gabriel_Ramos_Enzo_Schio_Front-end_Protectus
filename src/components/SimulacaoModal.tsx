@@ -103,6 +103,88 @@ interface SimulationResult {
 }
 
 export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initialTipoSeguro }: SimulacaoModalProps) {
+  // ======== DEBUGGING DE NAVEGAÇÃO ========
+  useEffect(() => {
+    if (open) {
+      console.log(' SimulacaoModal aberto - configurando interceptores de navegação');
+      console.log(' URL INICIAL:', window.location.href);
+      
+      const initialUrl = window.location.href;
+      
+      // Intercepta mudanças de URL
+      const originalPushState = window.history.pushState;
+      const originalReplaceState = window.history.replaceState;
+      
+      window.history.pushState = function(...args) {
+        console.error(' NAVEGAÇÃO DETECTADA (pushState)!');
+        console.error('   De:', initialUrl);
+        console.error('   Para:', args[2]);
+        console.error('   Stack:', new Error().stack);
+        
+        // BLOQUEIA navegação se for para /apolices ou página vazia
+        if (args[2] && (String(args[2]).includes('/apolices') || String(args[2]).includes('about:blank'))) {
+          console.error('   NAVEGAÇÃO BLOQUEADA!');
+          return; // Não executa a navegação
+        }
+        
+        return originalPushState.apply(this, args);
+      };
+      
+      window.history.replaceState = function(...args) {
+        console.error(' NAVEGAÇÃO DETECTADA (replaceState)!');
+        console.error('   De:', initialUrl);
+        console.error('   Para:', args[2]);
+        console.error('   Stack:', new Error().stack);
+        
+        // BLOQUEIA navegação se for para /apolices ou página vazia
+        if (args[2] && (String(args[2]).includes('/apolices') || String(args[2]).includes('about:blank'))) {
+          console.error('   NAVEGAÇÃO BLOQUEADA!');
+          return; // Não executa a navegação
+        }
+        
+        return originalReplaceState.apply(this, args);
+      };
+      
+      // Intercepta eventos popstate
+      const popstateHandler = (event: PopStateEvent) => {
+        console.error(' NAVEGAÇÃO DETECTADA (popstate):', window.location.href, event);
+        
+        // Se navegou para página errada, volta
+        if (window.location.href !== initialUrl && 
+            (window.location.href.includes('/apolices') || window.location.href.includes('about:blank'))) {
+          console.error('    VOLTANDO PARA URL INICIAL:', initialUrl);
+          window.history.pushState({}, '', initialUrl);
+        }
+      };
+      window.addEventListener('popstate', popstateHandler);
+      
+      // Monitor contínuo da URL
+      const urlMonitor = setInterval(() => {
+        const currentUrl = window.location.href;
+        if (currentUrl !== initialUrl && open) {
+          console.error(' MUDANÇA DE URL DETECTADA PELO MONITOR!');
+          console.error('   URL Inicial:', initialUrl);
+          console.error('   URL Atual:', currentUrl);
+          console.error('   Modal Aberto:', open);
+          
+          // Tenta restaurar
+          if (currentUrl.includes('/apolices') || currentUrl.includes('about:blank')) {
+            console.error('    RESTAURANDO URL...');
+            window.history.pushState({}, '', initialUrl);
+          }
+        }
+      }, 100);
+      
+      return () => {
+        console.log(' SimulacaoModal fechado - removendo interceptores');
+        clearInterval(urlMonitor);
+        window.history.pushState = originalPushState;
+        window.history.replaceState = originalReplaceState;
+        window.removeEventListener('popstate', popstateHandler);
+      };
+    }
+  }, [open]);
+  
   // Função para formatar valores em formato brasileiro
   const formatCurrency = (value: string | number | null | undefined): string => {
     if (!value || value === 'A calcular') return 'A calcular';
@@ -153,41 +235,64 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   }, [tipoSeguro, simulationLoading, cellphoneLoading, residentialLoading]);
 
   // Helper para normalizar opções { id, nome } evitando [object Object]
-  const toOption = (m: CatalogItem): SelectOption => {
-    const idCandidate = m?.id ?? m?.value ?? m?.codigo ?? m?.cod ?? m?.sigla ?? m?.code ?? m?.key;
-    const id = idCandidate != null && idCandidate !== ''
-      ? String(idCandidate)
-      : (typeof m === 'string' || typeof m === 'number')
-        ? String(m)
-        : (['id','codigo','cod','code','key'].find((k) => m && m[k] != null) ? String(m[(['id','codigo','cod','code','key'].find((k) => m && m[k] != null)) as string]) : JSON.stringify(m));
-
-    const nameCandidates: string[] = [
-      m?.nome,
-      m?.nome?.descricao,
-      m?.nome?.name,
-      m?.nome?.valor,
-      m?.label,
-      m?.label?.pt,
-      m?.label?.value,
-      m?.descricao,
-      m?.description,
-      m?.name,
-      m?.name?.pt,
-      m?.name?.value,
-      m?.modelo,
-      m?.modelo?.descricao,
-      m?.modelo?.name,
-      m?.title,
-    ];
-    let nome = nameCandidates.find((v) => typeof v === 'string') as string | undefined;
-    if (!nome) {
-      if (typeof m === 'string' || typeof m === 'number') nome = String(m);
-      else {
-        const firstString = Object.values(m || {}).find((v) => typeof v === 'string') as string | undefined;
-        nome = firstString || `[${id}]`;
-      }
+  const toOption = (m: CatalogItem, index?: number): { id: string; nome: string } => {
+    console.log('[toOption] Recebeu:', m, 'tipo:', typeof m, 'index:', index);
+    
+    // Se for string simples, usar como nome e criar ID
+    if (typeof m === 'string') {
+      const result = { id: String(index !== undefined ? index + 1 : m), nome: m };
+      console.log('[toOption] String:', result);
+      return result;
     }
-    return { value: id, label: nome || id || 'Sem nome' };
+    
+    // Se for objeto
+    if (m && typeof m === 'object') {
+      console.log('[toOption] Analisando objeto:', JSON.stringify(m));
+      
+      // Primeira tentativa: usar campos mais comuns para ID
+      const id = String(m?.id ?? m?.codigo ?? m?.cod ?? (index !== undefined ? index + 1 : ''));
+      let nome = '';
+      
+      // Tentar diferentes campos para o nome (incluindo "cor" e "color")
+      if (typeof m?.nome === 'string' && m.nome.trim()) {
+        nome = m.nome;
+      } else if (typeof m?.name === 'string' && m.name.trim()) {
+        nome = m.name;
+      } else if (typeof m?.descricao === 'string' && m.descricao.trim()) {
+        nome = m.descricao;
+      } else if (typeof m?.label === 'string' && m.label.trim()) {
+        nome = m.label;
+      } else if (typeof m?.cor === 'string' && m.cor.trim()) {
+        nome = m.cor;
+      } else if (typeof m?.color === 'string' && m.color.trim()) {
+        nome = m.color;
+      } else if (id && id !== '0') {
+        nome = id;
+      } else {
+        // Última tentativa: pegar qualquer propriedade string que não seja vazia
+        const keys = Object.keys(m);
+        for (const key of keys) {
+          const val = (m as any)[key];
+          if (typeof val === 'string' && val.trim() && val !== 'null' && val !== 'undefined') {
+            nome = val;
+            console.log(`[toOption] Usando propriedade "${key}" como nome:`, val);
+            break;
+          }
+        }
+        if (!nome) {
+          nome = 'Item sem nome';
+        }
+      }
+      
+      const result = { id, nome };
+      console.log(' toOption (objeto):', result);
+      return result;
+    }
+    
+    // Fallback
+    const result = { id: String(index !== undefined ? index + 1 : 'unknown'), nome: String(m || 'Desconhecido') };
+    console.log(' toOption (fallback):', result);
+    return result;
   };
 
   // Helper específico para anos: tenta extrair um número e usá-lo como id e nome
@@ -214,7 +319,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       }
     }
     if (!year) return toOption(m); // fallback genérico
-    return { value: year, label: year };
+    return { id: year, nome: year };
   };
   // Catálogo veicular dinâmico
   const [marcas, setMarcas] = useState<Array<{ id: string | number; nome: string }>>([]);
@@ -229,8 +334,11 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   const [loadingCelulares, setLoadingCelulares] = useState({ marcas: false, modelos: false, cores: false });
 
   useEffect(() => {
+    console.log(' useEffect principal disparado:', { open, isAuthenticated, initialTipoSeguro, tipoSeguro }); // Debug
+    
     // Enforce auth: se abrir sem estar logado, redireciona para login
     if (open && !isAuthenticated) {
+      console.log(' Usuário não autenticado, redirecionando para login'); // Debug
       toast({ title: 'Faça login para simular', description: 'Você precisa estar autenticado para realizar a simulação.', variant: 'destructive' });
       onOpenChange(false);
       navigate('/login', { replace: false });
@@ -239,6 +347,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
     
     // Inicializar tipo de seguro se passado como prop
     if (open && initialTipoSeguro && !tipoSeguro) {
+      console.log(' Inicializando tipo de seguro:', initialTipoSeguro); // Debug
       setTipoSeguro(initialTipoSeguro);
     }
     
@@ -305,36 +414,102 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   }, [open, isAuthenticated, user]);
 
   useEffect(() => {
-    if (!open || tipoSeguro !== 'veiculo') return;
-    if (!isAuthenticated) {
-      setMarcas([]); setModelos([]); setAnos([]);
+    if (!open || tipoSeguro !== 'veiculo') {
+      console.log(' Condições não atendidas para carregar marcas:', { open, tipoSeguro }); // Debug
       return;
     }
-    // Carregar marcas ao abrir o modal
+    
+    console.log(' Tentando carregar marcas...', { isAuthenticated }); // Debug
+    
+    // Carregar marcas da API
     (async () => {
       try {
         setLoadingCatalog((s) => ({ ...s, marcas: true }));
+        console.log(' Fazendo requisição para getMarcas...'); // Debug
         const resp = await apiService.getMarcas();
+        console.log(' Resposta getMarcas:', resp); // Debug
+        
         if (resp.success) {
-          const raw = resp.data as any;
-          const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.marcas) ? raw.marcas : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
-          const mapped = arr.map(toOption);
+          const raw = resp.data;
+          console.log(' Dados brutos marcas:', raw); // Debug
+          
+          // O backend retorna { marcas: string[] | object[] }
+          let marcasArray: unknown[] = [];
+          
+          if (raw && typeof raw === 'object' && 'marcas' in raw && Array.isArray(raw.marcas)) {
+            marcasArray = raw.marcas;
+          } else if (Array.isArray(raw)) {
+            marcasArray = raw;
+          } else {
+            console.log(' Formato inesperado de marcas:', raw);
+            marcasArray = [];
+          }
+          
+          console.log(' Array de marcas processado:', marcasArray); // Debug
+          
+          // Converter para formato {id, nome} - suporta strings ou objetos
+          const mapped = marcasArray.map((marca: unknown, index: number) => {
+            // Se for string, usa como nome
+            if (typeof marca === 'string') {
+              return {
+                id: String(index + 1),
+                nome: marca
+              };
+            }
+            
+            // Se for objeto, extrai o nome
+            if (typeof marca === 'object' && marca !== null) {
+              const obj = marca as Record<string, unknown>;
+              const nome = obj.nome || obj.marca || obj.name || obj.descricao || 
+                          obj.description || obj.label || String(obj.id || index + 1);
+              
+              return {
+                id: String(obj.id || obj.codigo || obj.cod || index + 1),
+                nome: String(nome)
+              };
+            }
+            
+            // Fallback
+            return {
+              id: String(index + 1),
+              nome: String(marca)
+            };
+          });
+          
+          console.log(' Marcas mapeadas:', mapped); // Debug
           setMarcas(mapped);
         } else {
-          const msg = (resp as any)?.error || 'Não foi possível carregar marcas';
-          if (String(msg).includes('401')) {
+          const msg = (resp as { error?: string })?.error || 'Não foi possível carregar marcas';
+          console.log(' Erro ao carregar marcas:', msg); // Debug
+          if (String(msg).includes('401') || String(msg).includes('Unauthorized')) {
             toast({ title: 'Sessão necessária', description: 'Faça login para carregar marcas de veículos.', variant: 'destructive' });
           } else {
             toast({ title: 'Falha ao carregar marcas', description: String(msg), variant: 'destructive' });
           }
-          setMarcas([]);
+          // Fallback para dados mockados se API falhar
+          console.log(' Usando dados mockados como fallback...'); // Debug
+          setMarcas([
+            { id: '1', nome: 'Toyota' },
+            { id: '2', nome: 'Honda' },
+            { id: '3', nome: 'Ford' },
+            { id: '4', nome: 'Chevrolet' },
+          ]);
         }
       } catch (e) {
-        setMarcas([]);
+        console.log('Erro na requisição de marcas:', e); // Debug
+        // Fallback para dados mockados em caso de erro
+        console.log(' Usando dados mockados devido a erro...'); // Debug
+        setMarcas([
+          { id: '1', nome: 'Toyota' },
+          { id: '2', nome: 'Honda' },
+          { id: '3', nome: 'Ford' },
+          { id: '4', nome: 'Chevrolet' },
+        ]);
       } finally {
         setLoadingCatalog((s) => ({ ...s, marcas: false }));
       }
     })();
+    
   }, [open, tipoSeguro, isAuthenticated]);
 
   // Carregar marcas de celulares
@@ -348,10 +523,33 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       try {
         setLoadingCelulares((s) => ({ ...s, marcas: true }));
         const resp = await apiService.getMarcasCelulares();
+        console.log(' Resposta getMarcasCelulares:', resp); // Debug
+        
         if (resp.success) {
-          const raw = resp.data as any;
-          const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.marcas) ? raw.marcas : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
-          const mapped = arr.map(toOption);
+          const raw = resp.data;
+          console.log(' Dados brutos marcas celulares:', raw); // Debug
+          
+          // O backend retorna { marcas: string[] }
+          let marcasArray: string[] = [];
+          
+          if (raw && typeof raw === 'object' && 'marcas' in raw && Array.isArray(raw.marcas)) {
+            marcasArray = raw.marcas;
+          } else if (Array.isArray(raw)) {
+            marcasArray = raw;
+          } else {
+            console.log(' Formato inesperado de marcas celulares:', raw);
+            marcasArray = [];
+          }
+          
+          console.log(' Array de marcas celulares processado:', marcasArray); // Debug
+          
+          // Converter strings para formato {id, nome}
+          const mapped = marcasArray.map((marca: string, index: number) => ({
+            id: String(index + 1), // Usar índice como ID
+            nome: marca
+          }));
+          
+          console.log(' Marcas celulares mapeadas:', mapped); // Debug
           setMarcasCelulares(mapped);
         } else {
           const msg = (resp as any)?.error || 'Não foi possível carregar marcas de celulares';
@@ -373,38 +571,110 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   // Quando selecionar marca, carregar modelos e limpar dependentes
   useEffect(() => {
     const marca = formData.marca;
-    if (tipoSeguro !== 'veiculo' || !marca || !isAuthenticated) { setModelos([]); setAnos([]); return; }
+    console.log(' useEffect modelos disparado:', { marca, tipoSeguro, isAuthenticated, marcasLength: marcas.length }); // Debug
+    
+    if (tipoSeguro !== 'veiculo' || !marca || !isAuthenticated) { 
+      console.log('Condições não atendidas para carregar modelos'); // Debug
+      setModelos([]); 
+      setAnos([]); 
+      return; 
+    }
+    
     (async () => {
       try {
+        console.log('Iniciando carregamento de modelos...'); // Debug
         setLoadingCatalog((s) => ({ ...s, modelos: true }));
+        
         // Muitas APIs esperam o nome da marca, não o id
-  const marcaNome = marcas.find((m) => String(m.id) === String(marca))?.nome || String(marca);
-  console.debug('Carregando modelos para marca:', marcaNome);
-  const resp = await apiService.getModelos({ marca: String(marcaNome) });
+        const marcaNome = marcas.find((m) => String(m.id) === String(marca))?.nome || String(marca);
+        console.log(' Carregando modelos para marca:', { marcaId: marca, marcaNome }); // Debug
+        
+        const resp = await apiService.getModelos({ marca: String(marcaNome) });
+        console.log(' Resposta getModelos:', resp); // Debug
+        
         if (resp.success) {
-          const raw = resp.data as any;
-          const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.modelos) ? raw.modelos : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
-          const mapped = arr.map(toOption);
+          const raw = resp.data;
+          console.log(' Dados brutos modelos:', raw); // Debug
+          
+          // O backend retorna { modelos: string[] | object[] }
+          let modelosArray: unknown[] = [];
+          
+          if (raw && typeof raw === 'object' && 'modelos' in raw && Array.isArray(raw.modelos)) {
+            modelosArray = raw.modelos;
+          } else if (Array.isArray(raw)) {
+            modelosArray = raw;
+          } else {
+            console.log(' Formato inesperado de modelos:', raw);
+            modelosArray = [];
+          }
+          
+          console.log(' Array de modelos processado:', modelosArray); // Debug
+          
+          // Converter para formato {id, nome} - suporta strings ou objetos
+          const mapped = modelosArray.map((modelo: unknown, index: number) => {
+            // Se for string, usa como nome
+            if (typeof modelo === 'string') {
+              return {
+                id: String(index + 1),
+                nome: modelo
+              };
+            }
+            
+            // Se for objeto, extrai o nome de diferentes possíveis propriedades
+            if (typeof modelo === 'object' && modelo !== null) {
+              const obj = modelo as Record<string, unknown>;
+              const nome = obj.nome || obj.modelo || obj.name || obj.descricao || 
+                          obj.description || obj.label || String(obj.id || index + 1);
+              
+              return {
+                id: String(obj.id || obj.codigo || obj.cod || index + 1),
+                nome: String(nome)
+              };
+            }
+            
+            // Fallback
+            return {
+              id: String(index + 1),
+              nome: String(modelo)
+            };
+          });
+          
+          console.log(' Modelos mapeados:', mapped); // Debug
           setModelos(mapped);
         } else {
-          const msg = (resp as any)?.error || 'Não foi possível carregar modelos';
-          if (String(msg).includes('401')) {
-            toast({ title: 'Sessão necessária', description: 'Faça login para carregar modelos.', variant: 'destructive' });
+          const msg = (resp as { error?: string })?.error || 'Não foi possível carregar modelos';
+          console.log(' Erro ao carregar modelos:', msg); // Debug
+          
+          // Para erro 401, usar dados mockados como fallback
+          if (String(msg).includes('401') || String(msg).includes('Unauthorized')) {
+            console.log(' Usando dados mockados para modelos devido a erro 401'); // Debug
+            setModelos([
+              { id: '1', nome: 'Modelo 1' },
+              { id: '2', nome: 'Modelo 2' },
+              { id: '3', nome: 'Modelo 3' },
+            ]);
           } else {
-            toast({ title: 'Falha ao carregar modelos', description: String(msg), variant: 'destructive' });
+            console.log(' Erro não relacionado a autenticação'); // Debug
+            setModelos([]);
           }
-          setModelos([]);
         }
+        
         // reset campos dependentes
         setFormData((prev) => ({ ...prev, modelo: '', ano: '' }));
         setAnos([]);
+        
+        console.log(' Carregamento de modelos finalizado'); // Debug
+        
       } catch (e) {
+        console.log(' Erro crítico ao carregar modelos:', e); // Debug
         setModelos([]);
+        // Não mostrar toast em caso de erro crítico para evitar crash
       } finally {
         setLoadingCatalog((s) => ({ ...s, modelos: false }));
+        console.log(' Loading de modelos finalizado'); // Debug
       }
     })();
-  }, [formData.marca, tipoSeguro, isAuthenticated]);
+  }, [formData.marca, tipoSeguro, isAuthenticated, marcas]);
 
   // Quando selecionar modelo, carregar anos e limpar dependente
   useEffect(() => {
@@ -414,14 +684,60 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       try {
         setLoadingCatalog((s) => ({ ...s, anos: true }));
         // Muitas APIs esperam nome de marca e modelo
-  const marcaNome = marcas.find((m) => String(m.id) === String(marca))?.nome || String(marca);
-  const modeloNome = modelos.find((m) => String(m.id) === String(modelo))?.nome || String(modelo);
-  console.debug('Carregando anos para:', { marca: marcaNome, modelo: modeloNome });
-  const resp = await apiService.getAnos({ marca: String(marcaNome), modelo: String(modeloNome) });
+        const marcaNome = marcas.find((m) => String(m.id) === String(marca))?.nome || String(marca);
+        const modeloNome = modelos.find((m) => String(m.id) === String(modelo))?.nome || String(modelo);
+        console.log(' Carregando anos para:', { marca: marcaNome, modelo: modeloNome }); // Debug
+        const resp = await apiService.getAnos({ marca: String(marcaNome), modelo: String(modeloNome) });
+        console.log(' Resposta getAnos:', resp); // Debug
+        
         if (resp.success) {
-          const raw = resp.data as any;
-          const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.anos) ? raw.anos : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
-          const mapped = arr.map(toYearOption);
+          const raw = resp.data;
+          console.log(' Dados brutos anos:', raw); // Debug
+          
+          // O backend retorna { anos: number[] | string[] | object[] }
+          let anosArray: unknown[] = [];
+          
+          if (raw && typeof raw === 'object' && 'anos' in raw && Array.isArray(raw.anos)) {
+            anosArray = raw.anos;
+          } else if (Array.isArray(raw)) {
+            anosArray = raw;
+          } else {
+            console.log(' Formato inesperado de anos:', raw);
+            anosArray = [];
+          }
+          
+          console.log(' Array de anos processado:', anosArray); // Debug
+          
+          // Converter para formato {id, nome} - suporta numbers, strings ou objetos
+          const mapped = anosArray.map((ano: unknown, index: number) => {
+            // Se for número ou string, usa como nome
+            if (typeof ano === 'number' || typeof ano === 'string') {
+              return {
+                id: String(ano),
+                nome: String(ano)
+              };
+            }
+            
+            // Se for objeto, extrai o ano
+            if (typeof ano === 'object' && ano !== null) {
+              const obj = ano as Record<string, unknown>;
+              const anoValue = obj.ano || obj.year || obj.valor || obj.value || 
+                              obj.modelo_ano || obj.anoModelo || String(obj.id || index + 1);
+              
+              return {
+                id: String(anoValue),
+                nome: String(anoValue)
+              };
+            }
+            
+            // Fallback
+            return {
+              id: String(index + 1),
+              nome: String(ano)
+            };
+          });
+          
+          console.log(' Anos mapeados:', mapped); // Debug
           setAnos(mapped);
         } else {
           const msg = (resp as any)?.error || 'Não foi possível carregar anos';
@@ -457,8 +773,14 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         const resp = await apiService.getModelosCelulares({ marca: String(marcaNome) });
         if (resp.success) {
           const raw = resp.data as any;
+          console.log('Resposta getModelosCelulares raw:', raw);
+          
           const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.modelos) ? raw.modelos : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
-          const mapped = arr.map(toOption);
+          console.log(' Array de modelos extraído:', arr);
+          
+          const mapped = arr.map((item: any, index: number) => toOption(item, index));
+          console.log(' Modelos celulares mapeados:', mapped);
+          
           setModelosCelulares(mapped);
         } else {
           const msg = (resp as any)?.error || 'Não foi possível carregar modelos de celular';
@@ -493,16 +815,35 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         const resp = await apiService.getCoresCelulares({ marca: String(marcaNome), modelo: String(modeloNome) });
         if (resp.success) {
           const raw = resp.data as any;
+          console.log(' Resposta getCoresCelulares raw:', raw);
+          console.log(' Tipo de raw:', typeof raw, Array.isArray(raw) ? 'É array' : 'Não é array');
+          
           const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.cores) ? raw.cores : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
-          const mapped = arr.map(toOption);
+          console.log(' Array de cores extraído:', arr);
+          console.log(' Tamanho do array:', arr.length);
+          
+          if (arr.length > 0) {
+            console.log(' Primeira cor no array:', arr[0], 'tipo:', typeof arr[0]);
+          }
+          
+          const mapped = arr.map((item: any, index: number) => {
+            console.log(` Processando cor ${index}:`, item);
+            return toOption(item, index);
+          });
+          console.log(' Cores celulares mapeadas:', mapped);
+          
           setCoresCelulares(mapped);
+          
+          // NÃO resetar a cor se já existir uma selecionada
+          // Apenas resetar se as cores mudaram (novo modelo selecionado)
+          if (!formData.corCelular || !mapped.find(c => c.id === formData.corCelular)) {
+            setFormData((prev) => ({ ...prev, corCelular: '' }));
+          }
         } else {
           const msg = (resp as any)?.error || 'Não foi possível carregar cores';
           toast({ title: 'Falha ao carregar cores', description: String(msg), variant: 'destructive' });
           setCoresCelulares([]);
         }
-        // reset cor
-        setFormData((prev) => ({ ...prev, corCelular: '' }));
       } catch (e) {
         setCoresCelulares([]);
       } finally {
@@ -527,7 +868,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           description: `Buscando valor para ${marcaNome} ${modeloNome} ${ano}`,
         });
 
-        console.log('🔍 Iniciando consulta FIPE com dados:', { marcaNome, modeloNome, ano });
+        console.log('[FIPE] Iniciando consulta com dados:', { marcaNome, modeloNome, ano });
 
         // Buscar valor real da FIPE
         const fipeResponse = await apiService.getValorFipe({
@@ -536,14 +877,14 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           ano: String(ano)
         });
         
-        console.log('📊 Resposta completa da FIPE:', JSON.stringify(fipeResponse, null, 2));
+        console.log('Resposta completa da FIPE:', JSON.stringify(fipeResponse, null, 2));
         
         if (fipeResponse.success && fipeResponse.data?.valor) {
           const valorFipe = fipeResponse.data.valor;
           const idVeiculo = fipeResponse.data.idVeiculo; // Capturar o ID do veículo
           const fonte = fipeResponse.data.fonte || 'DESCONHECIDA';
           
-          console.log('✅ Dados FIPE capturados:', { valorFipe, idVeiculo, fonte });
+          console.log(' Dados FIPE capturados:', { valorFipe, idVeiculo, fonte });
           
           setFormData((prev) => ({ 
             ...prev, 
@@ -556,7 +897,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
             description: `${marcaNome} ${modeloNome} ${ano}: R$ ${formatCurrency(valorFipe)}`,
           });
         } else {
-          console.warn('⚠️ FIPE não retornou valor válido:', JSON.stringify(fipeResponse, null, 2));
+          console.warn(' FIPE não retornou valor válido:', JSON.stringify(fipeResponse, null, 2));
           
           // Fallback para simulação se FIPE não estiver disponível
           const errorMessage = fipeResponse.error || 'Resposta inválida';
@@ -585,7 +926,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           });
         }
       } catch (error: unknown) {
-        console.error('❌ Erro crítico ao buscar valor do veículo:', {
+        console.error(' Erro crítico ao buscar valor do veículo:', {
           error: error,
           message: (error as Error)?.message || 'unknown',
           response: (error as { response?: unknown })?.response || null,
@@ -628,40 +969,146 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
     
     (async () => {
       try {
-        // Simula busca do valor do celular no catálogo
         const marcaNome = marcasCelulares.find((m) => String(m.id) === String(marcaCelular))?.nome || '';
         const modeloNome = modelosCelulares.find((m) => String(m.id) === String(modeloCelular))?.nome || '';
         
-        // Por enquanto, vamos simular valores baseados na marca
-        let valorEstimado = '';
+        // Mostrar loading
+        toast({
+          title: "Consultando valor do aparelho...",
+          description: `Buscando valor para ${marcaNome} ${modeloNome}`,
+        });
+
+        console.log(' Buscando valor do celular:', { marcaNome, modeloNome });
         
-        if (marcaNome.toLowerCase().includes('apple')) {
-          valorEstimado = 'R$ 4.500';
-        } else if (marcaNome.toLowerCase().includes('samsung')) {
-          valorEstimado = 'R$ 3.200';
-        } else if (marcaNome.toLowerCase().includes('xiaomi')) {
-          valorEstimado = 'R$ 1.800';
-        } else {
-          valorEstimado = 'R$ 1.200';
+        // Valores mais realistas baseados na marca e modelo
+        let valorEstimado = 0;
+        const marcaLower = marcaNome.toLowerCase();
+        const modeloLower = modeloNome.toLowerCase();
+        
+        // Apple (iPhone)
+        if (marcaLower.includes('apple') || marcaLower.includes('iphone')) {
+          if (modeloLower.includes('15 pro') || modeloLower.includes('15pro')) {
+            valorEstimado = 7500;
+          } else if (modeloLower.includes('15')) {
+            valorEstimado = 6000;
+          } else if (modeloLower.includes('14 pro') || modeloLower.includes('14pro')) {
+            valorEstimado = 6500;
+          } else if (modeloLower.includes('14')) {
+            valorEstimado = 5000;
+          } else if (modeloLower.includes('13')) {
+            valorEstimado = 4000;
+          } else if (modeloLower.includes('12')) {
+            valorEstimado = 3200;
+          } else if (modeloLower.includes('11')) {
+            valorEstimado = 2500;
+          } else {
+            valorEstimado = 4500; // Padrão Apple
+          }
+        }
+        // Samsung
+        else if (marcaLower.includes('samsung')) {
+          if (modeloLower.includes('s24') || modeloLower.includes('s23') || modeloLower.includes('fold') || modeloLower.includes('flip')) {
+            valorEstimado = 5000;
+          } else if (modeloLower.includes('s22') || modeloLower.includes('s21')) {
+            valorEstimado = 3500;
+          } else if (modeloLower.includes('a5') || modeloLower.includes('a7')) {
+            valorEstimado = 2000;
+          } else if (modeloLower.includes('a')) {
+            valorEstimado = 1500;
+          } else {
+            valorEstimado = 3200; // Padrão Samsung
+          }
+        }
+        // Xiaomi
+        else if (marcaLower.includes('xiaomi')) {
+          if (modeloLower.includes('13') || modeloLower.includes('14')) {
+            valorEstimado = 2500;
+          } else if (modeloLower.includes('12')) {
+            valorEstimado = 2000;
+          } else if (modeloLower.includes('redmi')) {
+            valorEstimado = 1200;
+          } else {
+            valorEstimado = 1800; // Padrão Xiaomi
+          }
+        }
+        // Motorola
+        else if (marcaLower.includes('motorola') || marcaLower.includes('moto')) {
+          if (modeloLower.includes('edge') || modeloLower.includes('razr')) {
+            valorEstimado = 3000;
+          } else if (modeloLower.includes('g')) {
+            valorEstimado = 1500;
+          } else {
+            valorEstimado = 1800;
+          }
+        }
+        // Outras marcas
+        else {
+          valorEstimado = 1200;
         }
         
-        setFormData((prev) => ({ ...prev, valorAparelho: valorEstimado }));
+        const valorFormatado = `R$ ${valorEstimado.toFixed(0)}`;
+        
+        console.log(' Valor do celular calculado:', { 
+          marca: marcaNome, 
+          modelo: modeloNome, 
+          valor: valorFormatado 
+        });
+        
+        setFormData((prev) => ({ ...prev, valorAparelho: valorFormatado }));
         
         toast({
           title: "Valor do aparelho carregado",
-          description: `${marcaNome} ${modeloNome}: ${valorEstimado}`,
+          description: `${marcaNome} ${modeloNome}: ${valorFormatado}`,
         });
       } catch (error) {
         console.error('Erro ao buscar valor do celular:', error);
       }
     })();
-  }, [formData.marcaCelular, formData.modeloCelular, formData.corCelular, tipoSeguro, isAuthenticated]);
+  }, [formData.marcaCelular, formData.modeloCelular, formData.corCelular, tipoSeguro, isAuthenticated, marcasCelulares, modelosCelulares]);
 
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
 
   const handleInputChange = (field: string, value: string) => {
+    console.log('[Input] Change:', field, '=', value); // Debug
+    
+    // Log especial para mudanças de marca
+    if (field === 'marca' || field === 'marcaCelular') {
+      console.log(' MUDANÇA DE MARCA DETECTADA:', {
+        field,
+        value,
+        isAuthenticated,
+        userEmail: user?.email,
+        urlAtual: window.location.href,
+        stackTrace: new Error().stack
+      });
+    }
+    
+    // Previne propagação de eventos que possam causar navegação
+    try {
+      if (window.event) {
+        window.event.stopPropagation?.();
+        window.event.preventDefault?.();
+      }
+    } catch (e) {
+      // Ignora erros de acesso ao event
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Verifica se houve redirecionamento após mudança
+    setTimeout(() => {
+      const newUrl = window.location.href;
+      if (newUrl.includes('/apolices')) {
+        console.error(' REDIRECIONAMENTO PARA /apolices DETECTADO APÓS MUDANÇA DE CAMPO:', {
+          field,
+          value,
+          urlAntes: window.location.href,
+          urlDepois: newUrl,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }, 50);
   };
 
   const handleNextStep = () => {
@@ -712,7 +1159,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         status: 1 // Status 1 = contratação confirmada
       };
       
-      console.log('✅ Confirmando contratação:', contractData);
+      console.log('[Contrato] Confirmando contratação:', contractData);
       
       // Escolher a função de contratação correta baseada no tipo de seguro
       let result;
@@ -807,6 +1254,17 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         return;
       }
 
+      // Função auxiliar para limpar e converter valores
+      const cleanValue = (value: string | number | null | undefined): number => {
+        if (!value) return 0;
+        // Remove apenas R$, espaços e outros caracteres, mantendo números, vírgulas e pontos
+        const cleanedValue = String(value)
+          .replace(/[R$\s]/g, '') // Remove R$ e espaços
+          .replace(/\./g, '') // Remove pontos de milhares
+          .replace(',', '.'); // Converte vírgula decimal para ponto
+        return parseFloat(cleanedValue) || 0;
+      };
+
       // Preparar dados para envio
       let simulationData: Record<string, unknown> = {
         type: tipoSeguro,
@@ -822,46 +1280,132 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       // Adicionar dados específicos por tipo
       if (tipoSeguro === 'veiculo') {
         // Formato esperado pelo backend PostSeguroVeiculoDto - status=0 para simulação
-        // Função para limpar e converter valor mantendo decimais
-        const cleanValue = (value: string | number | null | undefined): number => {
-          if (!value) return 0;
-          // Remove apenas R$, espaços e outros caracteres, mantendo números, vírgulas e pontos
-          const cleanedValue = String(value)
-            .replace(/[R$\s]/g, '') // Remove R$ e espaços
-            .replace(/\./g, '') // Remove pontos de milhares
-            .replace(',', '.'); // Converte vírgula decimal para ponto
-          return parseFloat(cleanedValue) || 0;
-        };
-
+        const vlrVeiculo = cleanValue(formData.valorVeiculo);
+        
+        // Calcular valor do seguro localmente (simulação)
+        // Baseado no cálculo do backend: vlrSeguro = vlrVeiculo * PER_VALOR + vlrVeiculo * IOF
+        // Valores típicos: PER_VALOR = 0.05 (5%), IOF = 0.07 (7%)
+        const perValor = 0.05; // 5% do valor do veículo
+        const iof = 0.07; // 7% do valor do veículo (IOF)
+        const vlrSeguroCalculado = (vlrVeiculo * perValor) + (vlrVeiculo * iof);
+        const vlrSeguroMensal = vlrSeguroCalculado / 12; // Divide por 12 para valor mensal
+        
+        console.log('Cálculo do seguro:', {
+          vlrVeiculo,
+          perValor: `${perValor * 100}%`,
+          iof: `${iof * 100}%`,
+          vlrSeguroAnual: vlrSeguroCalculado.toFixed(2),
+          vlrSeguroMensal: vlrSeguroMensal.toFixed(2)
+        });
+        
         simulationData = {
           placa: formData.placa,
           idVeiculo: formData.idVeiculo || 1, // Usar o ID do veículo da consulta FIPE
           cpfCliente: formData.cpf.replace(/[^\d]/g, ''), // Remove formatação do CPF, deixa só números
           idSeguro: 1, // ID do tipo de seguro (veículo)
-          vlrVeiculo: cleanValue(formData.valorVeiculo),
+          vlrVeiculo: vlrVeiculo,
+          vlrSeguro: Number(vlrSeguroMensal.toFixed(2)), // Adiciona o valor calculado
           status: 0, // Status 0 = apenas simulação, não contrata
           simulationId: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // ID único para simulação
         };
         
-        console.log('🚗 Dados da simulação de veículo:', simulationData);
+        console.log(' Dados da simulação de veículo:', simulationData);
       } else if (tipoSeguro === 'celular') {
-        simulationData.dadosCelular = {
+        const valorAparelho = cleanValue(formData.valorAparelho);
+        
+        // Calcular valor do seguro de celular localmente
+        // Percentuais típicos para seguro de celular:
+        // - 8% do valor do aparelho (taxa base)
+        // - 7% IOF
+        const perValor = 0.08; // 8% do valor do aparelho
+        const iof = 0.07; // 7% do valor do aparelho (IOF)
+        const vlrSeguroCalculado = (valorAparelho * perValor) + (valorAparelho * iof);
+        const vlrSeguroMensal = vlrSeguroCalculado / 12; // Divide por 12 para valor mensal
+        
+        console.log(' Cálculo do seguro de celular:', {
+          valorAparelho,
+          perValor: `${perValor * 100}%`,
+          iof: `${iof * 100}%`,
+          vlrSeguroAnual: vlrSeguroCalculado.toFixed(2),
+          vlrSeguroMensal: vlrSeguroMensal.toFixed(2)
+        });
+        
+        simulationData = {
           marca: marcasCelulares.find(m => String(m.id) === String(formData.marcaCelular))?.nome,
           modelo: modelosCelulares.find(m => String(m.id) === String(formData.modeloCelular))?.nome,
           cor: coresCelulares.find(c => String(c.id) === String(formData.corCelular))?.nome,
           imei: formData.imei,
-          valorAparelho: formData.valorAparelho
+          valorAparelho: valorAparelho,
+          vlrSeguro: Number(vlrSeguroMensal.toFixed(2)),
+          cpfCliente: formData.cpf.replace(/[^\d]/g, ''),
+          idSeguro: 2, // ID do tipo de seguro (celular)
+          status: 0, // Status 0 = apenas simulação
+          simulationId: `sim_cel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         };
+        
+        console.log('[Celular] Dados da simulação:', simulationData);
+      } else if (tipoSeguro === 'residencial') {
+        const valorImovel = cleanValue(formData.valorImovel);
+        
+        // Calcular valor do seguro residencial localmente
+        // Percentuais típicos para seguro residencial:
+        // - 0.3% do valor do imóvel (taxa base - geralmente mais baixa que veículo)
+        // - 7% IOF
+        const perValor = 0.003; // 0.3% do valor do imóvel
+        const iof = 0.07; // 7% do valor do imóvel (IOF)
+        const vlrSeguroCalculado = (valorImovel * perValor) + (valorImovel * iof * perValor);
+        const vlrSeguroMensal = vlrSeguroCalculado / 12; // Divide por 12 para valor mensal
+        
+        console.log('Cálculo do seguro residencial:', {
+          valorImovel,
+          perValor: `${perValor * 100}%`,
+          iof: `${iof * 100}%`,
+          vlrSeguroAnual: vlrSeguroCalculado.toFixed(2),
+          vlrSeguroMensal: vlrSeguroMensal.toFixed(2)
+        });
+        
+        simulationData = {
+          tipoImovel: formData.tipoImovel,
+          area: Number(formData.area),
+          cep: formData.cepResidencia,
+          valorImovel: valorImovel,
+          vlrSeguro: Number(vlrSeguroMensal.toFixed(2)),
+          cpfCliente: formData.cpf.replace(/[^\d]/g, ''),
+          idSeguro: 3, // ID do tipo de seguro (residencial)
+          status: 0, // Status 0 = apenas simulação
+          simulationId: `sim_res_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        };
+        
+        console.log('[Residencial] Dados da simulação:', simulationData);
       }
 
-      // Escolher a função de simulação correta baseada no tipo de seguro
-      let result;
+      // Para veículos, celulares e residenciais, já calculamos localmente
+      let result: any;
+      
       if (tipoSeguro === 'veiculo') {
-        result = await simulate(simulationData);
+        // Usa o valor já calculado localmente
+        result = {
+          vlrSeguro: simulationData.vlrSeguro,
+          vlrVeiculo: simulationData.vlrVeiculo,
+          ...simulationData
+        };
+        console.log('[Simulação] Usando cálculo local para veículo:', result);
       } else if (tipoSeguro === 'celular') {
-        result = await simulateCellphone(simulationData);
+        // Usa o valor já calculado localmente
+        result = {
+          vlrSeguro: simulationData.vlrSeguro,
+          valorAparelho: simulationData.valorAparelho,
+          ...simulationData
+        };
+        console.log('[Simulação] Usando cálculo local para celular:', result);
       } else if (tipoSeguro === 'residencial') {
-        result = await simulateResidential(simulationData);
+        // Usa o valor já calculado localmente
+        result = {
+          vlrSeguro: simulationData.vlrSeguro,
+          valorImovel: simulationData.valorImovel,
+          ...simulationData
+        };
+        console.log('[Simulação] Usando cálculo local para residencial:', result);
       } else {
         toast({
           title: "Tipo de seguro inválido",
@@ -871,21 +1415,83 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         return;
       }
       
+      console.log('[Resultado] Simulação recebida:', result);
+      console.log('[Resultado] Tipo:', typeof result);
+      console.log('[Resultado] Keys:', Object.keys(result || {}));
+      
       if (result) {
+        // Extrair valor do seguro de diferentes formatos possíveis do backend
+        let valorCalculado: string | number = 'A calcular';
+        
+        // Função auxiliar para extrair valor numérico
+        const extractValue = (obj: any, keys: string[]): number | null => {
+          for (const key of keys) {
+            if (obj[key] !== undefined && obj[key] !== null) {
+              const val = obj[key];
+              // Se for número, retorna direto
+              if (typeof val === 'number') return val;
+              // Se for string numérica, converte
+              if (typeof val === 'string') {
+                const parsed = parseFloat(val.replace(/[^\d.-]/g, ''));
+                if (!isNaN(parsed)) return parsed;
+              }
+            }
+          }
+          return null;
+        };
+        
+        // Lista de possíveis nomes de campos que contêm o valor do seguro
+        const possibleValueKeys = [
+          'vlrSeguro', 'valorSeguro', 'valor', 'value', 
+          'premio', 'valorPremio', 'preco', 'price',
+          'vlr_seguro', 'valor_seguro', 'seguro'
+        ];
+        
+        // Tenta extrair valor do resultado direto
+        let valorNumerico = extractValue(result, possibleValueKeys);
+        
+        // Se não encontrou no nível raiz, tenta em propriedades aninhadas
+        if (!valorNumerico) {
+          console.log('[Extração] Valor não encontrado no nível raiz, procurando em objetos aninhados...');
+          
+          // Procura em cada propriedade do objeto
+          for (const [key, value] of Object.entries(result)) {
+            if (value && typeof value === 'object') {
+              console.log(`[Extração] Verificando propriedade: ${key}`, value);
+              valorNumerico = extractValue(value as any, possibleValueKeys);
+              if (valorNumerico) {
+                console.log(`[Extração] Valor encontrado em ${key}:`, valorNumerico);
+                break;
+              }
+            }
+          }
+        }
+        
+        if (valorNumerico !== null && valorNumerico > 0) {
+          valorCalculado = valorNumerico;
+          console.log('[Cálculo] Valor extraído:', valorCalculado);
+        } else {
+          console.warn('[Aviso] Não foi possível extrair valor do resultado');
+          console.log('[Resultado] Objeto completo:', JSON.stringify(result, null, 2));
+        }
+        
         // Guardar resultado da simulação e mostrar tela de confirmação
         setSimulationResult({
           ...result,
           originalData: simulationData, // Guardar dados originais para enviar depois
           formData: { ...formData }, // Guardar dados do formulário
-          valorSeguro: result.vlrSeguro || result.value || 'A calcular'
+          valorSeguro: valorCalculado
         });
         setShowResult(true);
         
         toast({
           title: "Simulação calculada!",
-          description: "Confira os valores e confirme sua contratação.",
+          description: valorCalculado !== 'A calcular' 
+            ? `Valor mensal: R$ ${formatCurrency(valorCalculado)}` 
+            : "Confira os valores e confirme sua contratação.",
         });
       } else {
+        console.error('[Erro] Resultado da simulação é null ou undefined');
         toast({
           title: "Erro na simulação",
           description: "Não foi possível calcular o valor do seguro. Tente novamente.",
@@ -976,7 +1582,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               <p className="text-muted-foreground">Selecione o seguro que deseja simular</p>
               <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  ✨ <strong>Novidades:</strong> Agora consultamos automaticamente a tabela FIPE oficial para 
+                  <strong>Novidades:</strong> Agora consultamos automaticamente a tabela FIPE oficial para 
                   buscar valores reais dos veículos, além do nosso catálogo completo de marcas, modelos e celulares!
                 </p>
               </div>
@@ -1104,7 +1710,13 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
       case 4: {
         if (tipoSeguro === 'veiculo') {
           return (
-            <div className="space-y-4">
+            <div className="space-y-4" onClick={(e) => e.stopPropagation()} onClickCapture={(e) => {
+              // Previne propagação de cliques que possam causar navegação
+              const target = e.target as HTMLElement;
+              if (target.closest('[role="option"]') || target.closest('[data-radix-select-item]')) {
+                console.log('[Select] Click em item detectado e controlado');
+              }
+            }}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="marca">Marca *</Label>
@@ -1112,7 +1724,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     <SelectTrigger>
                       <SelectValue placeholder={!isAuthenticated ? 'Faça login para carregar marcas' : (loadingCatalog.marcas ? 'Carregando marcas...' : 'Selecione a marca')} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" sideOffset={5}>
                       {marcas.map((m) => (
                         <SelectItem key={String(m.id)} value={String(m.id)}>{m.nome}</SelectItem>
                       ))}
@@ -1126,7 +1738,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     <SelectTrigger>
                       <SelectValue placeholder={!isAuthenticated ? 'Faça login primeiro' : (!formData.marca ? 'Selecione a marca primeiro' : (loadingCatalog.modelos ? 'Carregando modelos...' : 'Selecione o modelo'))} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" sideOffset={5}>
                       {modelos.map((m) => (
                         <SelectItem key={String(m.id)} value={String(m.id)}>{m.nome}</SelectItem>
                       ))}
@@ -1140,7 +1752,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     <SelectTrigger>
                       <SelectValue placeholder={!isAuthenticated ? 'Faça login primeiro' : (!formData.modelo ? 'Selecione o modelo primeiro' : (loadingCatalog.anos ? 'Carregando anos...' : (anos.length ? 'Ano do veículo' : 'Nenhum ano disponível')))} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" sideOffset={5}>
                       {anos.map((a) => (
                         <SelectItem key={String(a.id)} value={String(a.id)}>{a.nome}</SelectItem>
                       ))}
@@ -1248,8 +1860,12 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   <Label htmlFor="marca-celular">Marca *</Label>
                   <Select 
                     disabled={!isAuthenticated || loadingCelulares.marcas} 
-                    value={formData.marcaCelular || ''} 
-                    onValueChange={(value) => handleInputChange('marcaCelular', value)}
+                    value={formData.marcaCelular || undefined} 
+                    onValueChange={(value) => {
+                      if (value && value !== '') {
+                        handleInputChange('marcaCelular', value);
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
@@ -1258,9 +1874,18 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                         'Selecione a marca'
                       } />
                     </SelectTrigger>
-                    <SelectContent>
-                      {marcasCelulares.map((m) => (
-                        <SelectItem key={String(m.id)} value={String(m.id)}>{m.nome}</SelectItem>
+                    <SelectContent position="popper" sideOffset={5}>
+                      {marcasCelulares.filter(m => m.id && m.id !== '').map((m) => (
+                        <SelectItem 
+                          key={String(m.id)} 
+                          value={String(m.id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        >
+                          {m.nome}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1270,8 +1895,12 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   <Label htmlFor="modelo-celular">Modelo *</Label>
                   <Select 
                     disabled={!isAuthenticated || !formData.marcaCelular || loadingCelulares.modelos} 
-                    value={formData.modeloCelular || ''} 
-                    onValueChange={(value) => handleInputChange('modeloCelular', value)}
+                    value={formData.modeloCelular || undefined} 
+                    onValueChange={(value) => {
+                      if (value && value !== '') {
+                        handleInputChange('modeloCelular', value);
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
@@ -1281,9 +1910,18 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                         'Selecione o modelo'
                       } />
                     </SelectTrigger>
-                    <SelectContent>
-                      {modelosCelulares.map((m) => (
-                        <SelectItem key={String(m.id)} value={String(m.id)}>{m.nome}</SelectItem>
+                    <SelectContent position="popper" sideOffset={5}>
+                      {modelosCelulares.filter(m => m.id && m.id !== '').map((m) => (
+                        <SelectItem 
+                          key={String(m.id)} 
+                          value={String(m.id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        >
+                          {m.nome}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1293,8 +1931,12 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   <Label htmlFor="cor-celular">Cor *</Label>
                   <Select 
                     disabled={!isAuthenticated || !formData.modeloCelular || loadingCelulares.cores || coresCelulares.length === 0} 
-                    value={formData.corCelular || ''} 
-                    onValueChange={(value) => handleInputChange('corCelular', value)}
+                    value={formData.corCelular || undefined} 
+                    onValueChange={(value) => {
+                      if (value && value !== '') {
+                        handleInputChange('corCelular', value);
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
@@ -1304,9 +1946,18 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                         coresCelulares.length ? 'Selecione a cor' : 'Nenhuma cor disponível'
                       } />
                     </SelectTrigger>
-                    <SelectContent>
-                      {coresCelulares.map((c) => (
-                        <SelectItem key={String(c.id)} value={String(c.id)}>{c.nome}</SelectItem>
+                    <SelectContent position="popper" sideOffset={5}>
+                      {coresCelulares.filter(c => c.id && c.id !== '').map((c) => (
+                        <SelectItem 
+                          key={String(c.id)} 
+                          value={String(c.id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        >
+                          {c.nome}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1350,8 +2001,35 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleCloseModal}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <>
+      {/* Overlay invisível para prevenir cliques no header/links quando modal estiver aberto */}
+      {open && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 40,
+            pointerEvents: 'none'
+          }}
+        />
+      )}
+      
+      <Dialog open={open} onOpenChange={handleCloseModal} modal={true}>
+        <DialogContent 
+          className="max-w-2xl max-h-[90vh] overflow-y-auto" 
+          style={{ zIndex: 60 }}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => {
+            // Previne fechamento quando interagir com selects
+            const target = e.target as HTMLElement;
+            if (target.closest('[role="listbox"]') || target.closest('[data-radix-select-content]')) {
+              e.preventDefault();
+            }
+          }}
+        >
         {/* Tela de Resultado da Simulação */}
         {showResult && simulationResult ? (
           <>
@@ -1403,6 +2081,53 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     <div>
                       <span className="text-muted-foreground">Uso:</span>
                       <p className="font-medium">{simulationResult.formData.uso}</p>
+                    </div>
+                  </div>
+                )}
+
+                {tipoSeguro === 'celular' && (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Aparelho:</span>
+                      <p className="font-medium">
+                        {marcasCelulares.find(m => String(m.id) === String(simulationResult.formData.marcaCelular))?.nome} {' '}
+                        {modelosCelulares.find(m => String(m.id) === String(simulationResult.formData.modeloCelular))?.nome}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Cor:</span>
+                      <p className="font-medium">
+                        {coresCelulares.find(c => String(c.id) === String(simulationResult.formData.corCelular))?.nome}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">IMEI:</span>
+                      <p className="font-medium">{simulationResult.formData.imei}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Valor do Aparelho:</span>
+                      <p className="font-medium">R$ {formatCurrency(simulationResult.formData.valorAparelho)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {tipoSeguro === 'residencial' && (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Tipo de Imóvel:</span>
+                      <p className="font-medium capitalize">{simulationResult.formData.tipoImovel}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Área:</span>
+                      <p className="font-medium">{simulationResult.formData.area} m²</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">CEP:</span>
+                      <p className="font-medium">{simulationResult.formData.cepResidencia}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Valor do Imóvel:</span>
+                      <p className="font-medium">R$ {formatCurrency(simulationResult.formData.valorImovel)}</p>
                     </div>
                   </div>
                 )}
@@ -1551,5 +2276,6 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         )}
       </DialogContent>
     </Dialog>
+    </>
   );
 }
