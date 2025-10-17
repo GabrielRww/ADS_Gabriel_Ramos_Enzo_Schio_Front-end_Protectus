@@ -573,7 +573,7 @@ class ApiService {
     // Primeiro, tentar criar/verificar cliente se temos CPF
     if (simulationData.cpfCliente) {
       try {
-        console.log('👤 Verificando cliente CPF:', simulationData.cpfCliente);
+        console.log('[INFO] Verificando cliente CPF:', simulationData.cpfCliente);
         
         // Primeiro verifica se o cliente já existe
         const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
@@ -581,9 +581,9 @@ class ApiService {
         });
         
         if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
-          console.log('✅ Cliente já existe, continuando com simulação');
+          console.log('[OK] Cliente já existe, continuando com simulação');
         } else {
-          console.log('👤 Cliente não encontrado, criando novo...');
+          console.log('[INFO] Cliente não encontrado, criando novo...');
           const clientData = {
             cpf: simulationData.cpfCliente,
             nome: 'Cliente Simulação',
@@ -598,10 +598,10 @@ class ApiService {
             method: 'POST',
             body: JSON.stringify(clientData),
           });
-          console.log('✅ Cliente criado com sucesso');
+          console.log('[OK] Cliente criado com sucesso');
         }
       } catch (clientError) {
-        console.log('⚠️ Erro ao verificar/criar cliente (continuando):', clientError);
+        console.log('[AVISO] Erro ao verificar/criar cliente (continuando):', clientError);
         // Não é um erro crítico, continua com a simulação
       }
     }
@@ -705,16 +705,16 @@ class ApiService {
     // Primeiro, verificar/criar cliente se temos CPF
     if (simulationData.cpfCliente) {
       try {
-        console.log('👤 Verificando cliente CPF:', simulationData.cpfCliente);
+        console.log('[INFO] Verificando cliente CPF:', simulationData.cpfCliente);
         
         const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
           method: 'GET',
         });
         
         if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
-          console.log('✅ Cliente já existe, continuando com simulação');
+          console.log('[OK] Cliente já existe, continuando com simulação');
         } else {
-          console.log('👤 Cliente não encontrado, criando novo...');
+          console.log('[INFO] Cliente não encontrado, criando novo...');
           const clientData = {
             cpf: simulationData.cpfCliente,
             nome: 'Cliente Simulação',
@@ -729,10 +729,10 @@ class ApiService {
             method: 'POST',
             body: JSON.stringify(clientData),
           });
-          console.log('✅ Cliente criado com sucesso');
+          console.log('[OK] Cliente criado com sucesso');
         }
       } catch (clientError) {
-        console.log('⚠️ Erro ao verificar/criar cliente (continuando):', clientError);
+        console.log('[AVISO] Erro ao verificar/criar cliente (continuando):', clientError);
       }
     }
 
@@ -747,16 +747,16 @@ class ApiService {
     // Primeiro, verificar/criar cliente se temos CPF
     if (simulationData.cpfCliente) {
       try {
-        console.log('👤 Verificando cliente CPF:', simulationData.cpfCliente);
+        console.log('[INFO] Verificando cliente CPF:', simulationData.cpfCliente);
         
         const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
           method: 'GET',
         });
         
         if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
-          console.log('✅ Cliente já existe, continuando com simulação');
+          console.log('[OK] Cliente já existe, continuando com simulação');
         } else {
-          console.log('👤 Cliente não encontrado, criando novo...');
+          console.log('[INFO] Cliente não encontrado, criando novo...');
           const clientData = {
             cpf: simulationData.cpfCliente,
             nome: 'Cliente Simulação',
@@ -771,10 +771,10 @@ class ApiService {
             method: 'POST',
             body: JSON.stringify(clientData),
           });
-          console.log('✅ Cliente criado com sucesso');
+          console.log('[OK] Cliente criado com sucesso');
         }
       } catch (clientError) {
-        console.log('⚠️ Erro ao verificar/criar cliente (continuando):', clientError);
+        console.log('[AVISO] Erro ao verificar/criar cliente (continuando):', clientError);
       }
     }
 
@@ -786,7 +786,7 @@ class ApiService {
 
   // Buscar valor FIPE real
   async getValorFipe(params: { marca: string; modelo: string; ano: string }): Promise<ApiResponse<any>> {
-    console.log('🚗 Buscando valor FIPE:', params);
+    console.log('[FIPE] Buscando valor FIPE:', params);
     
     try {
       // Primeiro tenta buscar do backend (endpoint correto conforme backend)
@@ -801,7 +801,7 @@ class ApiService {
       
       for (const endpoint of endpoints) {
         try {
-          console.log('📡 Tentando endpoint do backend:', endpoint);
+          console.log('[API] Tentando endpoint do backend:', endpoint);
           
           const backendResponse = await this.request<any>(endpoint, {
             method: 'GET',
@@ -829,7 +829,7 @@ class ApiService {
             }
           }
         } catch (endpointError: any) {
-          console.log(`❌ Erro no endpoint ${endpoint}:`, {
+          console.log(`[ERRO] Erro no endpoint ${endpoint}:`, {
             status: endpointError?.response?.status || 'unknown',
             statusText: endpointError?.response?.statusText || 'unknown',
             message: endpointError?.message || 'unknown',
@@ -841,10 +841,10 @@ class ApiService {
       }
       
       // Se não teve sucesso, loga o motivo
-      console.log('⚠️ Nenhum endpoint do backend retornou valor FIPE válido, tentando API pública...');
+      console.log('[AVISO] Nenhum endpoint do backend retornou valor FIPE válido, tentando API pública...');
     } catch (error) {
-      console.log('❌ Erro geral ao acessar backend FIPE:', error);
-      console.log('🔄 Tentando API pública da FIPE...');
+      console.log('[ERRO] Erro geral ao acessar backend FIPE:', error);
+      console.log('[RETRY] Tentando API pública da FIPE...');
     }
 
     try {

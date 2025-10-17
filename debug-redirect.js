@@ -2,7 +2,7 @@
 // Execute este script no console do navegador ANTES de selecionar uma marca
 
 console.clear();
-console.log('🔧 Configurando interceptores de debug...');
+console.log('[DEBUG] Configurando interceptores de debug...');
 
 // 1. Intercepta todas as mudanças de URL
 const originalPushState = window.history.pushState;
@@ -10,7 +10,7 @@ const originalReplaceState = window.history.replaceState;
 
 window.history.pushState = function(...args) {
   if (args[2] && args[2].includes('/apolices')) {
-    console.error(' REDIRECIONAMENTO PARA /apolices VIA pushState:', {
+    console.error('[ALERTA] REDIRECIONAMENTO PARA /apolices VIA pushState:', {
       url: args[2],
       stack: new Error().stack,
       timestamp: new Date().toISOString()
@@ -22,7 +22,7 @@ window.history.pushState = function(...args) {
 
 window.history.replaceState = function(...args) {
   if (args[2] && args[2].includes('/apolices')) {
-    console.error(' REDIRECIONAMENTO PARA /apolices VIA replaceState:', {
+    console.error('[ALERTA] REDIRECIONAMENTO PARA /apolices VIA replaceState:', {
       url: args[2],
       stack: new Error().stack,
       timestamp: new Date().toISOString()
@@ -35,7 +35,7 @@ window.history.replaceState = function(...args) {
 // 2. Intercepta eventos de popstate
 window.addEventListener('popstate', function(event) {
   if (window.location.href.includes('/apolices')) {
-    console.error(' REDIRECIONAMENTO PARA /apolices VIA popstate:', {
+    console.error('[ALERTA] REDIRECIONAMENTO PARA /apolices VIA popstate:', {
       url: window.location.href,
       event: event,
       timestamp: new Date().toISOString()
@@ -48,7 +48,7 @@ let currentUrl = window.location.href;
 setInterval(() => {
   if (window.location.href !== currentUrl) {
     if (window.location.href.includes('/apolices')) {
-      console.error('🚨 REDIRECIONAMENTO PARA /apolices VIA location change:', {
+      console.error('[ALERTA] REDIRECIONAMENTO PARA /apolices VIA location change:', {
         urlAnterior: currentUrl,
         urlNova: window.location.href,
         timestamp: new Date().toISOString()
@@ -60,12 +60,12 @@ setInterval(() => {
 
 // 4. Monitora React Router Navigate
 if (window.React && window.React.version) {
-  console.log(' React detectado, monitorando hooks de navegação...');
+  console.log('[INFO] React detectado, monitorando hooks de navegação...');
 }
 
 // 5. Monitora errors que podem causar redirecionamento
 window.addEventListener('error', function(event) {
-  console.log(' Erro JavaScript detectado:', {
+  console.log('[INFO] Erro JavaScript detectado:', {
     message: event.message,
     filename: event.filename,
     lineno: event.lineno,
@@ -79,11 +79,11 @@ window.addEventListener('error', function(event) {
 const originalFetch = window.fetch;
 window.fetch = function(...args) {
   const url = args[0];
-  console.log(' API Call:', url);
+  console.log('[API] API Call:', url);
   
   return originalFetch.apply(this, args).then(response => {
     if (!response.ok) {
-      console.warn(' API Error:', {
+      console.warn('[ERRO] API Error:', {
         url: url,
         status: response.status,
         statusText: response.statusText,
@@ -92,7 +92,7 @@ window.fetch = function(...args) {
     }
     return response;
   }).catch(error => {
-    console.error(' API Fetch Error:', {
+    console.error('[ERRO] API Fetch Error:', {
       url: url,
       error: error,
       timestamp: new Date().toISOString()
@@ -101,6 +101,6 @@ window.fetch = function(...args) {
   });
 };
 
-console.log(' Interceptadores configurados! Agora você pode selecionar uma marca.');
-console.log(' Se houver redirecionamento para /apolices, os logs aparecerão acima.');
-console.log(' Para desabilitar os interceptadores, recarregue a página.');
+console.log('[INFO] Interceptadores configurados! Agora você pode selecionar uma marca.');
+console.log('[INFO] Se houver redirecionamento para /apolices, os logs aparecerão acima.');
+console.log('[INFO] Para desabilitar os interceptadores, recarregue a página.');

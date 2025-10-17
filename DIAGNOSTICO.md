@@ -1,33 +1,3 @@
-# 🔍 Diagnóstico do Problema de Redirecionamento
-
-## Problema Atual
-Ao selecionar uma marca no modal, os modelos carregam mas depois você é redirecionado para uma página vazia.
-
-## 📋 Informações Necessárias
-
-Por favor, siga estes passos e me envie as informações:
-
-### 1. Abra o Console do Navegador (F12)
-- Vá para a aba **Console**
-- Clique em "Clear console" para limpar
-- Tente fazer a simulação novamente
-- **COPIE TODOS OS LOGS** que aparecerem
-
-### 2. Verifique a Aba Network
-- Vá para a aba **Network** (Rede)
-- Clique em "Clear" para limpar
-- Tente fazer a simulação novamente
-- Procure por requisições com status **vermelho** (erros)
-- Me envie o **status code** e a **URL** dessas requisições
-
-### 3. URL da Página Vazia
-- Quando for redirecionado para a página vazia
-- **COPIE A URL COMPLETA** da barra de endereços
-- Me envie essa URL
-
-### 4. Informações do Ambiente
-Execute estes comandos no console do navegador (F12 > Console):
-
 ```javascript
 // Copie e cole estes comandos um por um:
 
@@ -58,27 +28,27 @@ console.log('Modal aberto, aguardando seleção...');
 // Crie um listener para capturar a navegação
 const originalPushState = window.history.pushState;
 window.history.pushState = function(...args) {
-    console.error('🚨 PUSHSTATE CHAMADO:', args);
+    console.error('[ALERTA] PUSHSTATE CHAMADO:', args);
     console.trace(); // Mostra de onde veio a chamada
     return originalPushState.apply(this, args);
 };
 
 const originalReplaceState = window.history.replaceState;
 window.history.replaceState = function(...args) {
-    console.error('🚨 REPLACESTATE CHAMADO:', args);
+    console.error('[ALERTA] REPLACESTATE CHAMADO:', args);
     console.trace();
     return originalReplaceState.apply(this, args);
 };
 
-console.log('✅ Listeners instalados, agora selecione a marca');
+console.log('[OK] Listeners instalados, agora selecione a marca');
 ```
 
 Depois de executar isso, selecione a marca e me envie TODOS os logs que aparecerem.
 
-## 🎯 O que Procurar
+## O que Procurar
 
 Especialmente fique atento a logs que contenham:
-- 🚨 (emoji de alerta)
+- [ALERTA] (mensagens de alerta)
 - "NAVEGAÇÃO DETECTADA"
 - "REDIRECIONAMENTO"
 - "/apolices"
@@ -86,7 +56,7 @@ Especialmente fique atento a logs que contenham:
 - Erros 401, 403, 404
 - Stack traces
 
-## 📤 Como Me Enviar
+## Como Me Enviar
 
 Copie TODOS os logs do console e me envie em um bloco de código markdown:
 

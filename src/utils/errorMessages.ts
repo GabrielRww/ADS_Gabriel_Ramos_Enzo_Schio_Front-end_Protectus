@@ -190,15 +190,15 @@ export function getErrorTips(errors: ErrorInfo[]): string[] {
   
   errors.forEach(error => {
     if (error.field === 'cpf') {
-      tips.push('💡 Digite apenas os números do CPF (ex: 12345678901)');
+      tips.push('Dica: Digite apenas os números do CPF (ex: 12345678901)');
     } else if (error.field === 'phone') {
-      tips.push('💡 Digite apenas os números do telefone (ex: 11999999999)');
+      tips.push('Dica: Digite apenas os números do telefone (ex: 11999999999)');
     } else if (error.field === 'cep') {
-      tips.push('💡 Digite apenas os números do CEP (ex: 12345678)');
+      tips.push('Dica: Digite apenas os números do CEP (ex: 12345678)');
     } else if (error.field === 'email') {
-      tips.push('💡 Verifique se o email está correto e não está já cadastrado');
+      tips.push('Dica: Verifique se o email está correto e não está já cadastrado');
     } else if (error.field === 'password') {
-      tips.push('💡 Use uma senha forte com letras, números e símbolos');
+      tips.push('Dica: Use uma senha forte com letras, números e símbolos');
     }
   });
   
