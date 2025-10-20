@@ -61,6 +61,7 @@ interface FormData {
   localidade?: string;
   valorBem?: number;
   idVeiculo?: number;
+  idCelular?: number; // ID do celular no catálogo
   [key: string]: string | number | undefined;
 }
 
@@ -819,24 +820,58 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           console.log(' Tipo de raw:', typeof raw, Array.isArray(raw) ? 'É array' : 'Não é array');
           
           const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.cores) ? raw.cores : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.items) ? raw.items : [];
-          console.log(' Array de cores extraído:', arr);
-          console.log(' Tamanho do array:', arr.length);
+          console.log('[Cores] Array de cores extraído:', arr);
+          console.log('[Cores] Tamanho do array:', arr.length);
+          console.log('[Cores] Raw completo:', JSON.stringify(raw));
           
           if (arr.length > 0) {
-            console.log(' Primeira cor no array:', arr[0], 'tipo:', typeof arr[0]);
+            console.log('[Cores] Primeira cor no array:', arr[0], 'tipo:', typeof arr[0]);
           }
           
-          const mapped = arr.map((item: any, index: number) => {
-            console.log(` Processando cor ${index}:`, item);
-            return toOption(item, index);
-          });
-          console.log(' Cores celulares mapeadas:', mapped);
+          // Mapear cores (backend retorna array de strings)
+          const mapped = arr
+            .filter((item: any) => item !== null && item !== undefined && item !== '') // Filtrar valores vazios
+            .map((item: any, index: number) => {
+              console.log(`[Cores] Processando cor ${index}:`, item, 'tipo:', typeof item);
+              // Se for string simples (como o backend retorna), usar a string como nome e ID
+              if (typeof item === 'string') {
+                return { id: item, nome: item };
+              }
+              return toOption(item, index);
+            });
+          console.log('[Cores] Cores celulares mapeadas:', mapped);
           
-          setCoresCelulares(mapped);
+          // Se não houver cores no banco, adicionar cores padrão
+          if (mapped.length === 0) {
+            console.warn('[Cores] Nenhuma cor encontrada no banco, usando cores padrão');
+            const coresPadrao = [
+              { id: 'Preto', nome: 'Preto' },
+              { id: 'Branco', nome: 'Branco' },
+              { id: 'Prata', nome: 'Prata' },
+              { id: 'Dourado', nome: 'Dourado' },
+              { id: 'Azul', nome: 'Azul' },
+              { id: 'Verde', nome: 'Verde' },
+              { id: 'Rosa', nome: 'Rosa' },
+              { id: 'Vermelho', nome: 'Vermelho' },
+            ];
+            setCoresCelulares(coresPadrao);
+            toast({ 
+              title: 'Cores não cadastradas', 
+              description: 'Usando cores padrão. Entre em contato para cadastrar cores específicas deste modelo.',
+              variant: 'default'
+            });
+          } else {
+            setCoresCelulares(mapped);
+          }
           
           // NÃO resetar a cor se já existir uma selecionada
           // Apenas resetar se as cores mudaram (novo modelo selecionado)
-          if (!formData.corCelular || !mapped.find(c => c.id === formData.corCelular)) {
+          const coresFinais = mapped.length > 0 ? mapped : [
+            { id: 'Preto', nome: 'Preto' },
+            { id: 'Branco', nome: 'Branco' },
+            { id: 'Prata', nome: 'Prata' },
+          ];
+          if (!formData.corCelular || !coresFinais.find(c => c.id === formData.corCelular)) {
             setFormData((prev) => ({ ...prev, corCelular: '' }));
           }
         } else {
@@ -1048,13 +1083,21 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         
         const valorFormatado = `R$ ${valorEstimado.toFixed(0)}`;
         
+        // Gerar ou usar ID do celular (usar ID da marca como base ou gerar único)
+        const idCelularGerado = formData.modeloCelular || Date.now();
+        
         console.log(' Valor do celular calculado:', { 
           marca: marcaNome, 
           modelo: modeloNome, 
-          valor: valorFormatado 
+          valor: valorFormatado,
+          idCelular: idCelularGerado
         });
         
-        setFormData((prev) => ({ ...prev, valorAparelho: valorFormatado }));
+        setFormData((prev) => ({ 
+          ...prev, 
+          valorAparelho: valorFormatado,
+          idCelular: Number(idCelularGerado) // Salvar ID do celular
+        }));
         
         toast({
           title: "Valor do aparelho carregado",
@@ -1154,11 +1197,17 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
     setContractingLoading(true);
     try {
       // Enviar dados com status=1 para efetivar contratação
+      // Remover campos temporários que não devem ir ao backend
+      const { simulationId, valorAparelho, ...cleanData } = simulationResult.originalData;
+      
       const contractData = {
-        ...simulationResult.originalData,
+        ...cleanData,
+        qtdMeses: 12, // Garantir que qtdMeses está presente como número
         status: 1 // Status 1 = contratação confirmada
       };
       
+      console.log('[Contrato] originalData completo:', simulationResult.originalData);
+      console.log('[Contrato] Dados limpos:', cleanData);
       console.log('[Contrato] Confirmando contratação:', contractData);
       
       // Escolher a função de contratação correta baseada no tipo de seguro
@@ -1305,6 +1354,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           idSeguro: 1, // ID do tipo de seguro (veículo)
           vlrVeiculo: vlrVeiculo,
           vlrSeguro: Number(vlrSeguroMensal.toFixed(2)), // Adiciona o valor calculado
+          qtdMeses: 12, // Quantidade de meses (1 ano)
           status: 0, // Status 0 = apenas simulação, não contrata
           simulationId: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // ID único para simulação
         };
@@ -1330,16 +1380,24 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           vlrSeguroMensal: vlrSeguroMensal.toFixed(2)
         });
         
+        // Debug: verificar mapeamento de cor
+        console.log('[Celular] formData.corCelular:', formData.corCelular);
+        console.log('[Celular] coresCelulares disponíveis:', coresCelulares);
+        const corEncontrada = coresCelulares.find(c => String(c.id) === String(formData.corCelular));
+        console.log('[Celular] Cor encontrada:', corEncontrada);
+        
         simulationData = {
-          marca: marcasCelulares.find(m => String(m.id) === String(formData.marcaCelular))?.nome,
-          modelo: modelosCelulares.find(m => String(m.id) === String(formData.modeloCelular))?.nome,
-          cor: coresCelulares.find(c => String(c.id) === String(formData.corCelular))?.nome,
           imei: formData.imei,
-          valorAparelho: valorAparelho,
-          vlrSeguro: Number(vlrSeguroMensal.toFixed(2)),
+          idCelular: formData.idCelular || 1, // ID do celular do catálogo (obrigatório)
+          marca: marcasCelulares.find(m => String(m.id) === String(formData.marcaCelular))?.nome || 'Marca Desconhecida',
+          modelo: modelosCelulares.find(m => String(m.id) === String(formData.modeloCelular))?.nome || 'Modelo Desconhecido',
+          cor: corEncontrada?.nome || formData.corCelular || 'Desconhecido',
           cpfCliente: formData.cpf.replace(/[^\d]/g, ''),
           idSeguro: 2, // ID do tipo de seguro (celular)
+          vlrCelular: valorAparelho, // Nome correto do campo no backend
+          qtdMeses: 12, // Quantidade de meses (1 ano)
           status: 0, // Status 0 = apenas simulação
+          vlrSeguro: Number(vlrSeguroMensal.toFixed(2)),
           simulationId: `sim_cel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         };
         
@@ -1364,15 +1422,27 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           vlrSeguroMensal: vlrSeguroMensal.toFixed(2)
         });
         
+        // Gerar CIB único: formato CIB{CPF_ultimos_4}{timestamp_curto}
+        const cpfNumeros = formData.cpf.replace(/[^\d]/g, '');
+        const cibUnico = `CIB${cpfNumeros.slice(-4)}${Date.now().toString().slice(-8)}`;
+        
         simulationData = {
-          tipoImovel: formData.tipoImovel,
-          area: Number(formData.area),
-          cep: formData.cepResidencia,
-          valorImovel: valorImovel,
-          vlrSeguro: Number(vlrSeguroMensal.toFixed(2)),
-          cpfCliente: formData.cpf.replace(/[^\d]/g, ''),
+          cib: cibUnico, // CIB único gerado
+          cpfCliente: cpfNumeros,
           idSeguro: 3, // ID do tipo de seguro (residencial)
+          qtdMeses: 12, // Quantidade de meses (1 ano)
+          numero: 'S/N', // Número (padrão se não houver)
+          complemento: '', // Complemento opcional
+          bairro: 'Centro', // Bairro (padrão)
+          cidade: 'São Paulo', // Cidade (padrão)
+          estado: 'SP', // Estado (padrão)
+          cep: formData.cepResidencia?.replace(/[^\d]/g, '') || '00000000',
+          areaM2: Number(formData.area) || 0,
+          sistemaSeguranca: false, // Sistema de segurança (padrão false)
+          vlrImovel: valorImovel,
+          vlrSeguro: Number(vlrSeguroMensal.toFixed(2)),
           status: 0, // Status 0 = apenas simulação
+          tipoImovel: formData.tipoImovel || 'casa', // Adicionar tipo para referência no resultado
           simulationId: `sim_res_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         };
         
@@ -1394,7 +1464,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
         // Usa o valor já calculado localmente
         result = {
           vlrSeguro: simulationData.vlrSeguro,
-          valorAparelho: simulationData.valorAparelho,
+          vlrCelular: simulationData.vlrCelular, // Usar nome correto do backend
           ...simulationData
         };
         console.log('[Simulação] Usando cálculo local para celular:', result);

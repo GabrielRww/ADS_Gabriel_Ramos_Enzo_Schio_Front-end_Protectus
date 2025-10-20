@@ -23,7 +23,7 @@ const getApiConfig = () => {
       seguroCelularPath: import.meta.env.VITE_LOCAL_SEGURO_CELULAR_PATH || '/insurances/seguro-celular',
       
       // Residencial
-      seguroResidencialPath: import.meta.env.VITE_LOCAL_SEGURO_RESIDENCIAL_PATH || '/insurances/seguro-residencial',
+      seguroResidencialPath: import.meta.env.VITE_LOCAL_SEGURO_RESIDENCIAL_PATH || '/insurances/seguro-imovel',
       
       // Usuários
       usersClientePath: import.meta.env.VITE_LOCAL_USERS_CLIENTE_PATH || '/users/cliente',
@@ -49,7 +49,7 @@ const getApiConfig = () => {
     seguroCelularPath: '/insurances/seguro-celular',
     
     // Residencial (preparado para implementação)
-    seguroResidencialPath: '/insurances/seguro-residencial',
+    seguroResidencialPath: '/insurances/seguro-imovel',
     
     // Usuários
     usersClientePath: '/users/cliente',
