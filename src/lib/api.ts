@@ -784,6 +784,33 @@ class ApiService {
     });
   }
 
+  // Atualizar status do seguro de veículo (contratação)
+  async updateVehicleInsuranceStatus(statusData: { placa: string; status: number }): Promise<ApiResponse<any>> {
+    console.log('[Status] Atualizando status do seguro de veículo:', statusData);
+    return this.request<any>(`${apiConfig.seguroVeiculoPath}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(statusData),
+    });
+  }
+
+  // Atualizar status do seguro de celular (contratação)
+  async updateCellphoneInsuranceStatus(statusData: { imei: string; status: number }): Promise<ApiResponse<any>> {
+    console.log('[Status] Atualizando status do seguro de celular:', statusData);
+    return this.request<any>(`${apiConfig.seguroCelularPath}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(statusData),
+    });
+  }
+
+  // Atualizar status do seguro residencial (contratação)
+  async updateResidentialInsuranceStatus(statusData: { cib: string; status: number }): Promise<ApiResponse<any>> {
+    console.log('[Status] Atualizando status do seguro residencial:', statusData);
+    return this.request<any>(`${apiConfig.seguroResidencialPath}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(statusData),
+    });
+  }
+
   // Buscar valor FIPE real
   async getValorFipe(params: { marca: string; modelo: string; ano: string }): Promise<ApiResponse<any>> {
     console.log('[FIPE] Buscando valor FIPE:', params);

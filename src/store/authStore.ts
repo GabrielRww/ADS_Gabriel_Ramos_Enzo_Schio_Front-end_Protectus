@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { apiService, type User } from '@/lib/api';
+import { loginCliente } from '@/service';
 import { parseApiError, type ErrorInfo } from '@/utils/errorMessages';
 
 export type UserRole = 'cliente' | 'funcionario' | 'gerente';

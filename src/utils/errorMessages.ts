@@ -1,7 +1,3 @@
-/**
- * Utilitários para formatação e tradução de mensagens de erro da API
- */
-
 export interface ErrorInfo {
   field?: string;
   message: string;
