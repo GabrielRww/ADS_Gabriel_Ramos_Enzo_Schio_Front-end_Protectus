@@ -66,7 +66,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
     if (initialTipoSeguro && initialTipoSeguro !== tipoSeguro) {
       setTipoSeguro(initialTipoSeguro);
     }
-  }, [initialTipoSeguro, tipoSeguro]);
+  }, [initialTipoSeguro]);
 
   // ======== FUNÇÕES AUXILIARES DE UI ========
 
@@ -154,7 +154,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
           </div>
         );
 
-      case 2: {
+      case 2:
         if (!tipoSeguro) return null;
         const seguroInfo = segurosInfo[tipoSeguro];
         return (
@@ -185,7 +185,6 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
             </Card>
           </div>
         );
-      }
 
       case 3:
         return (
@@ -500,31 +499,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   </Select>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="cor-celular">Cor *</Label>
-                  <Select 
-                    disabled={!isAuthenticated || !logic.formData.modeloCelular || logic.loadingCelulares.anos || logic.coresCelulares.length === 0} 
-                    value={logic.formData.corCelular || ''} 
-                    onValueChange={(value) => logic.handleInputChange('corCelular', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={
-                        !isAuthenticated ? 'Faça login primeiro' : 
-                        !logic.formData.modeloCelular ? 'Selecione o modelo primeiro' : 
-                        logic.loadingCelulares.anos ? 'Carregando cores...' : 
-                        logic.coresCelulares.length ? 'Selecione a cor' : 'Nenhuma cor disponível'
-                      } />
-                    </SelectTrigger>
-                    <SelectContent position="popper" sideOffset={5}>
-                      {(() => {
-                        console.log('[Modal] Cores disponíveis:', logic.coresCelulares);
-                        return logic.coresCelulares.filter(c => c.id && c.id !== '' && c.nome).map((c) => (
-                          <SelectItem key={String(c.id)} value={String(c.id)}>{c.nome}</SelectItem>
-                        ));
-                      })()}
-                    </SelectContent>
-                  </Select>
-                </div>
+
                 
                 <div className="space-y-2">
                   <Label htmlFor="imei">IMEI *</Label>
@@ -537,19 +512,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="valor-aparelho">Valor do Aparelho</Label>
-                  <Input
-                    id="valor-aparelho"
-                    value={logic.formData.valorAparelho ? `R$ ${logic.formatCurrency(logic.formData.valorAparelho)}` : ''}
-                    placeholder="Carregando..."
-                    readOnly
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    * Valor consultado automaticamente
-                  </p>
-                </div>
+
               </div>
             </div>
           );
@@ -590,7 +553,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-4">
                     {(() => {
                       console.log('[SimulacaoModal] simulationResult:', logic.simulationResult);
-                      let valor = logic.simulationResult?.valorSeguro;
+                      let valor = logic.simulationResult?.vlrSeguro || logic.simulationResult?.valorSeguro;
                       console.log('[SimulacaoModal] valor bruto:', valor);
                       
                       // Se o valor for muito alto (provavelmente anual), dividir por 12
@@ -663,14 +626,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                       <span className="text-muted-foreground">IMEI:</span>
                       <p className="font-medium">{logic.formData.imei}</p>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Valor do Aparelho:</span>
-                      <p className="font-medium">
-                        {logic.formData.valorAparelho ? 
-                          `R$ ${logic.formatCurrency(logic.formData.valorAparelho)}` : 
-                          'Consultando...'}
-                      </p>
-                    </div>
+
                   </div>
                 )}
 

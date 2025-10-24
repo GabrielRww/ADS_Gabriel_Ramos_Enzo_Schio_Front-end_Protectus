@@ -9,7 +9,6 @@ import {
   getMarcasCelulares,
   getModelosCelulares,
   getVeiculo,
-  getCelular,
   createSeguroVeiculo,
   createSeguroCelular,
   createSeguroImovel,
@@ -34,9 +33,7 @@ export interface FormData {
   idVeiculo?: number;
   marcaCelular?: string;
   modeloCelular?: string;
-  corCelular?: string;
   imei?: string;
-  valorAparelho?: string;
   idCelular?: number;
   tipoImovel?: string;
   area?: string;
@@ -112,7 +109,7 @@ export function useSimulacaoLogic(
   const [anos, setAnos] = useState<{ id: string; nome: string }[]>([]);
   const [marcasCelulares, setMarcasCelulares] = useState<{ id: string; nome: string }[]>([]);
   const [modelosCelulares, setModelosCelulares] = useState<{ id: string; nome: string }[]>([]);
-  const [coresCelulares, setCoresCelulares] = useState<{ id: string; nome: string }[]>([]);
+  // Estado de cores removido - API não existe
   
   const [loadingCatalog, setLoadingCatalog] = useState<LoadingStates>({
     marcas: false,
@@ -330,7 +327,7 @@ export function useSimulacaoLogic(
       const requiredFields = {
         veiculo: ['marca', 'modelo', 'ano', 'placa', 'uso'],
         residencial: ['tipoImovel', 'area', 'cepResidencia', 'valorImovel', 'endereco', 'numero', 'bairro', 'cidade', 'estado'],
-        celular: ['marcaCelular', 'modeloCelular', 'corCelular', 'imei']
+        celular: ['marcaCelular', 'modeloCelular', 'imei']
       };
 
       const currentRequired = requiredFields[tipoSeguro] || [];
@@ -386,7 +383,7 @@ export function useSimulacaoLogic(
       } else if (tipoSeguro === 'celular') {
         const valorAparelho = cleanValue(formData.valorAparelho);
         
-        const corEncontrada = coresCelulares.find(c => String(c.id) === String(formData.corCelular));
+        // Cor removida - API não existe
         const corNome = corEncontrada?.nome || 'Desconhecido';
         
         const { simulationId, valorAparelho: _, ...cleanData } = {
@@ -691,7 +688,6 @@ export function useSimulacaoLogic(
     const marcaCelular = formData.marcaCelular;
     if (tipoSeguro !== 'celular' || !marcaCelular || !isAuthenticated) {
       setModelosCelulares([]);
-      setCoresCelulares([]);
       return;
     }
     
@@ -714,8 +710,7 @@ export function useSimulacaoLogic(
           setModelosCelulares([]);
         }
         
-        setFormData(prev => ({ ...prev, modeloCelular: '', corCelular: '' }));
-        setCoresCelulares([]);
+        setFormData(prev => ({ ...prev, modeloCelular: '' }));
       } catch (e) {
         console.error('Erro ao carregar modelos de celulares:', e);
         setModelosCelulares([]);
@@ -725,110 +720,10 @@ export function useSimulacaoLogic(
     })();
   }, [formData.marcaCelular, tipoSeguro, isAuthenticated, marcasCelulares]);
 
-  // API de cores não existe - usar campo manual
-  // Cores são inseridas manualmente pelo usuário
+  // APIs de cores e valor do aparelho não existem - removidas
 
   // Memoizar toast para evitar re-renders desnecessários
   const memoizedToast = useCallback(toast, [toast]);
-  
-  // Buscar valor do celular quando marca, modelo e cor estiverem selecionados
-  useEffect(() => {
-    const marcaCelular = formData.marcaCelular;
-    const modeloCelular = formData.modeloCelular;
-    const corCelular = formData.corCelular;
-    
-    if (tipoSeguro !== 'celular' || !marcaCelular || !modeloCelular || !corCelular || !isAuthenticated) {
-      return;
-    }
-    
-    // Verifica se a cor não é null ou string vazia
-    if (!corCelular || corCelular === 'null' || corCelular.trim() === '') {
-      console.log('[Valor Celular] Cor inválida:', corCelular);
-      return;
-    }
-    
-    console.log('[Valor Celular]  Tentando carregar valor do aparelho...');
-    
-    (async () => {
-      try {
-        const marcaNome = marcasCelulares.find(m => String(m.id) === String(marcaCelular))?.nome || String(marcaCelular);
-        const modeloNome = modelosCelulares.find(m => String(m.id) === String(modeloCelular))?.nome || String(modeloCelular);
-        const corNome = String(corCelular); // Cor é manual agora, não vem de lista da API
-        
-        console.log('[Valor Celular]  Buscando:', { marcaNome, modeloNome, corNome });
-        
-        const resp = await getCelular({ marca: marcaNome, modelo: modeloNome, cor: corNome });
-        
-        console.log('[Valor Celular]  Resposta da API:', resp);
-        
-        if (resp) {
-          let valor = null;
-          let id = null;
-          
-          // Verifica diferentes propriedades para valor
-          if (resp.valor !== undefined && resp.valor !== null) {
-            valor = resp.valor;
-          } else if (resp.price !== undefined && resp.price !== null) {
-            valor = resp.price;
-          } else if (resp.preco !== undefined && resp.preco !== null) {
-            valor = resp.preco;
-          }
-          
-          // Verifica ID
-          if (resp.id !== undefined && resp.id !== null) {
-            id = resp.id;
-          }
-          
-          if (valor !== null && valor !== undefined && valor !== '') {
-            const valorNumerico = Number(valor);
-            if (!isNaN(valorNumerico) && valorNumerico > 0) {
-              const valorFormatado = formatCurrency(valorNumerico);
-              
-              setFormData(prev => ({
-                ...prev,
-                valorAparelho: String(valorNumerico),
-                idCelular: id || 1
-              }));
-              
-              memoizedToast({
-                title: " Valor do aparelho carregado",
-                description: `${marcaNome} ${modeloNome} ${corNome}: R$ ${valorFormatado}`,
-              });
-              
-              console.log('[Valor Celular]  Sucesso! Valor:', valorNumerico);
-            } else {
-              console.log('[Valor Celular]  Valor inválido na resposta:', valor);
-              memoizedToast({
-                title: " Valor inválido",
-                description: "Insira o valor do aparelho manualmente",
-                variant: "destructive"
-              });
-            }
-          } else {
-            console.log('[Valor Celular]  Nenhum valor retornado pela API');
-            memoizedToast({
-              title: " Valor não encontrado",
-              description: "Insira o valor do aparelho manualmente",
-            });
-          }
-        } else {
-          console.log('[Valor Celular] API retornou resposta vazia');
-          memoizedToast({
-            title: " Erro na API",
-            description: "Insira o valor do aparelho manualmente",
-            variant: "destructive"
-          });
-        }
-        
-      } catch (apiError) {
-        console.log('[Valor Celular] API ainda não implementada no backend:', apiError);
-        memoizedToast({
-          title: " API em desenvolvimento",
-          description: "Insira o valor do aparelho manualmente",
-        });
-      }
-    })();
-  }, [formData.marcaCelular, formData.modeloCelular, formData.corCelular, tipoSeguro, isAuthenticated, marcasCelulares, modelosCelulares, memoizedToast]);
   
   // Buscar valor do veículo FIPE quando marca, modelo e ano estiverem selecionados
   useEffect(() => {
@@ -910,7 +805,7 @@ export function useSimulacaoLogic(
     anos,
     marcasCelulares,
     modelosCelulares,
-    coresCelulares,
+    // coresCelulares removido - API não existe
     loadingCatalog,
     loadingCelulares,
     
