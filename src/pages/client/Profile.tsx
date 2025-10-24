@@ -9,7 +9,6 @@ import { useAuthStore } from '@/store/authStore';
 import { apiService, type User } from '@/lib/api';
 import { Camera, Edit3, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { debugUserData } from '@/utils/debugUser';
 
 export function ClientProfile() {
   const { user } = useAuthStore();
@@ -23,7 +22,6 @@ export function ClientProfile() {
   // Debug completo ao montar
   useEffect(() => {
     console.log('Profile: Componente montado com user', user);
-    debugUserData();
   }, []);
   
   // Helpers de formatação

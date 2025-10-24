@@ -12,43 +12,6 @@ export interface Policy {
   valor: string; // preço textual ex: R$ 149,90/mês
 }
 
-const MOCK_POLICIES: Policy[] = [
-  {
-    id: 'AP001',
-    tipo: 'Veículo',
-    objeto: 'Honda Civic - ABC-1234',
-    status: 'Ativo',
-    vigencia: '23/05/2024 - 23/05/2025',
-    valor: 'R$ 149,90/mês',
-  },
-  {
-    id: 'AP002',
-    tipo: 'Residencial',
-    objeto: 'Rua das Flores, 123',
-    status: 'Ativo',
-    vigencia: '15/08/2024 - 15/08/2025',
-    valor: 'R$ 89,90/mês',
-  },
-  {
-    id: 'AP003',
-    tipo: 'Celular',
-    objeto: 'iPhone 14 Pro',
-    status: 'Pendente',
-    vigencia: 'Aguardando aprovação',
-    valor: 'R$ 29,90/mês',
-  },
-  {
-    id: 'AP004',
-    tipo: 'Veículo',
-    objeto: 'Toyota Corolla - XYZ-5678',
-    status: 'Cancelado',
-    vigencia: '10/01/2024 - 10/01/2025',
-    valor: 'R$ 134,90/mês',
-  },
-];
-
-const ENABLE_POLICIES_API = import.meta.env.VITE_POLICIES_API === 'true';
-
 export function usePolicies() {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,12 +22,7 @@ export function usePolicies() {
     (async () => {
       setLoading(true);
       setError(null);
-      if (!ENABLE_POLICIES_API) {
-        // Não chama backend — usa mock e encerra
-        if (mounted) setPolicies(MOCK_POLICIES);
-        if (mounted) setLoading(false);
-        return;
-      }
+      
       try {
         const resp = await apiService.getPolicies();
         if (resp.success && Array.isArray(resp.data) && resp.data.length > 0) {
@@ -78,11 +36,11 @@ export function usePolicies() {
           }));
           if (mounted) setPolicies(mapped);
         } else {
-          if (mounted) setPolicies(MOCK_POLICIES);
+          if (mounted) setPolicies([]);
         }
       } catch (e: any) {
         setError(e?.message || 'Falha ao carregar apólices');
-        setPolicies(MOCK_POLICIES);
+        setPolicies([]);
       } finally {
         if (mounted) setLoading(false);
       }
