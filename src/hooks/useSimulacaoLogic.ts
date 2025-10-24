@@ -8,7 +8,6 @@ import {
   getAnosVeiculos,
   getMarcasCelulares,
   getModelosCelulares,
-  getCoresCelulares,
   getVeiculo,
   getCelular,
   createSeguroVeiculo,
@@ -726,81 +725,8 @@ export function useSimulacaoLogic(
     })();
   }, [formData.marcaCelular, tipoSeguro, isAuthenticated, marcasCelulares]);
 
-  // Carregar cores de celulares
-  useEffect(() => {
-    const marcaCelular = formData.marcaCelular;
-    const modeloCelular = formData.modeloCelular;
-    
-    if (tipoSeguro !== 'celular' || !marcaCelular || !modeloCelular || !isAuthenticated) {
-      setCoresCelulares([]);
-      setFormData(prev => ({ ...prev, corCelular: '' }));
-      return;
-    }
-    
-    (async () => {
-      try {
-        setLoadingCelulares(s => ({ ...s, anos: true })); // Reutilizamos 'anos' para cores
-        const marcaNome = marcasCelulares.find(m => String(m.id) === String(marcaCelular))?.nome || String(marcaCelular);
-        const modeloNome = modelosCelulares.find(m => String(m.id) === String(modeloCelular))?.nome || String(modeloCelular);
-        
-        console.log('[Cores Celular] Buscando cores para:', { marcaNome, modeloNome });
-        
-        const resp = await getCoresCelulares({ marca: String(marcaNome), modelo: String(modeloNome) });
-        
-        console.log('[Cores Celular] Resposta da API:', resp);
-        
-        if (resp) {
-          const raw = resp;
-          let coresArray: unknown[] = [];
-          
-          if (raw && typeof raw === 'object' && 'cores' in raw && Array.isArray(raw.cores)) {
-            coresArray = raw.cores;
-          } else if (Array.isArray(raw)) {
-            coresArray = raw;
-          }
-          
-          console.log('[Cores Celular] Array de cores extraído:', coresArray);
-          
-          const mapped = coresArray.map((cor: unknown, index: number) => {
-            if (typeof cor === 'string') {
-              return { id: String(index + 1), nome: cor };
-            }
-            
-            if (typeof cor === 'object' && cor !== null) {
-              const obj = cor as Record<string, unknown>;
-              const nome = obj.nome || obj.cor || obj.name || obj.color || String(obj.id || cor);
-              const id = obj.id || obj.codigo || nome || index + 1;
-              return {
-                id: String(id),
-                nome: String(nome)
-              };
-            }
-            
-            return { id: String(index + 1), nome: String(cor) };
-          });
-          
-          console.log('[Cores Celular] Cores mapeadas:', mapped);
-          setCoresCelulares(mapped);
-          
-          if (mapped.length === 0) {
-            console.log('[Cores Celular] Nenhuma cor retornada pela API');
-          }
-        } else {
-          console.log('[Cores Celular] Resposta vazia da API');
-          setCoresCelulares([]);
-        }
-        
-        // Limpa a cor selecionada quando mudam marca/modelo
-        setFormData(prev => ({ ...prev, corCelular: '' }));
-        
-      } catch (e) {
-        console.error('[Cores Celular] Erro ao carregar cores da API:', e);
-        setCoresCelulares([]);
-      } finally {
-        setLoadingCelulares(s => ({ ...s, anos: false }));
-      }
-    })();
-  }, [formData.marcaCelular, formData.modeloCelular, tipoSeguro, isAuthenticated, marcasCelulares, modelosCelulares]);
+  // API de cores não existe - usar campo manual
+  // Cores são inseridas manualmente pelo usuário
 
   // Memoizar toast para evitar re-renders desnecessários
   const memoizedToast = useCallback(toast, [toast]);
@@ -827,7 +753,7 @@ export function useSimulacaoLogic(
       try {
         const marcaNome = marcasCelulares.find(m => String(m.id) === String(marcaCelular))?.nome || String(marcaCelular);
         const modeloNome = modelosCelulares.find(m => String(m.id) === String(modeloCelular))?.nome || String(modeloCelular);
-        const corNome = coresCelulares.find(c => String(c.id) === String(corCelular))?.nome || String(corCelular);
+        const corNome = String(corCelular); // Cor é manual agora, não vem de lista da API
         
         console.log('[Valor Celular]  Buscando:', { marcaNome, modeloNome, corNome });
         
@@ -902,7 +828,7 @@ export function useSimulacaoLogic(
         });
       }
     })();
-  }, [formData.marcaCelular, formData.modeloCelular, formData.corCelular, tipoSeguro, isAuthenticated, marcasCelulares, modelosCelulares, coresCelulares, memoizedToast]);
+  }, [formData.marcaCelular, formData.modeloCelular, formData.corCelular, tipoSeguro, isAuthenticated, marcasCelulares, modelosCelulares, memoizedToast]);
   
   // Buscar valor do veículo FIPE quando marca, modelo e ano estiverem selecionados
   useEffect(() => {

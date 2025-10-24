@@ -167,10 +167,7 @@ export const getModelosCelulares = async (params?: { marca: string }) => {
   return resp.data;
 };
 
-export const getCoresCelulares = async (params?: { marca: string; modelo: string }) => {
-  const resp = await api.get(CELLPHONE_ENDPOINTS.cores, { params });
-  return resp.data;
-};
+// API de cores não existe - cor será manual
 
 export const createSeguroCelular = async (data: any) => {
   const resp = await api.post(CELLPHONE_ENDPOINTS.seguroCelular, data);
