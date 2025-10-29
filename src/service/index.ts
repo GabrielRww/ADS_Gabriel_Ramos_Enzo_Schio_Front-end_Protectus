@@ -29,7 +29,7 @@ const VEHICLE_ENDPOINTS = {
   modelos: "/insurances/modelos",
   anos: "/insurances/anos",
   seguroVeiculo: "/insurances/seguro-veiculo",
-  seguroVeiculoStatus: "/insurances/seguro-veiculo/status",
+  seguroVeiculoStatus: "/insurances/seguro-veiculo-status",
 };
 
 // Endpoints de Celulares
@@ -38,13 +38,13 @@ const CELLPHONE_ENDPOINTS = {
   modelos: "/insurances/celulares/modelos",
   cores: "/insurances/celulares/cores",
   seguroCelular: "/insurances/seguro-celular",
-  seguroCelularStatus: "/insurances/seguro-celular/status",
+  seguroCelularStatus: "/insurances/seguro-celular-status",
 };
 
 // Endpoints de Residencial
 const RESIDENTIAL_ENDPOINTS = {
   seguroImovel: "/insurances/seguro-imovel",
-  seguroImovelStatus: "/insurances/seguro-imovel/status",
+  seguroImovelStatus: "/insurances/seguro-imovel-status",
 };
 
 const api = axios.create({
@@ -193,6 +193,11 @@ export const updateSeguroImovelStatus = async (data: { cib: string; status: numb
 // === Buscar dados específicos de veículo ===
 export const getVeiculo = async (params?: { marca: string; modelo: string; ano: number }) => {
   const resp = await api.get('/insurances/veiculo', { params });
+  return resp.data;
+};
+
+export const getCelular = async (params?: { marca: string; modelo: string;}) => {
+  const resp = await api.get('/insurances/celular', { params });
   return resp.data;
 };
 

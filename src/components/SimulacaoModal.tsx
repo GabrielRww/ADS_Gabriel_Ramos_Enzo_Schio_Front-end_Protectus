@@ -60,6 +60,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   
   // Usar hook customizado com toda a lógica
   const logic = useSimulacaoLogic(tipoSeguro, open);
+  console.log(logic)
 
   // Atualizar tipo de seguro quando prop mudar
   useEffect(() => {
@@ -99,7 +100,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   };
 
   const handleContractSuccess = async () => {
-    const success = await logic.handleAcceptContract();
+    const success = await logic.handleAcceptContract(1);
+    console.log(success)
     if (success) {
       handleCloseModal();
     }
@@ -499,7 +501,20 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   </Select>
                 </div>
                 
-
+                  <div className="space-y-2">
+                  <Label htmlFor="valor-celular">Valor do celular</Label>
+                  <Input
+                    id="valor-celular"
+                    value={logic.formData.valorCelular ? `R$ ${logic.formatCurrency(logic.formData.valorCelular)}` : ''}
+                    onChange={(e) => logic.handleInputChange('valorCelular', e.target.value)}
+                    placeholder="Valor de mercado"
+                    readOnly
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    * Valor estimado em pesquisa de mercado
+                  </p>
+                </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="imei">IMEI *</Label>
@@ -548,12 +563,12 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 p-6 rounded-lg border border-green-200 dark:border-green-800">
                 <div className="text-center">
                   <h3 className="text-lg font-semibold text-foreground mb-2">
-                    Valor do Seu Seguro
+                    Valor do seu seguro
                   </h3>
                   <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-4">
                     {(() => {
                       console.log('[SimulacaoModal] simulationResult:', logic.simulationResult);
-                      let valor = logic.simulationResult?.vlrSeguro || logic.simulationResult?.valorSeguro;
+                      let valor = logic.simulationResult?.vlrSeguro;
                       console.log('[SimulacaoModal] valor bruto:', valor);
                       
                       // Se o valor for muito alto (provavelmente anual), dividir por 12
@@ -565,11 +580,10 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                       if (valor) {
                         return `R$ ${logic.formatCurrency(valor)}`;
                       }
-                      return 'R$ A calcular';
                     })()}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Valor mensal do seguro calculado
+                  <p className="text-sm text-muted-foreground text-center">
+                    Pago mensalmente, em 12X.
                   </p>
                 </div>
               </div>
@@ -614,12 +628,6 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                       <p className="font-medium">
                         {logic.marcasCelulares.find(m => String(m.id) === String(logic.formData.marcaCelular))?.nome} {' '}
                         {logic.modelosCelulares.find(m => String(m.id) === String(logic.formData.modeloCelular))?.nome}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Cor:</span>
-                      <p className="font-medium">
-                        {logic.coresCelulares.find(c => String(c.id) === String(logic.formData.corCelular))?.nome}
                       </p>
                     </div>
                     <div>
@@ -703,7 +711,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     ) : (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Aceitar e Contratar
+                        Aceitar e solicitar
                       </>
                     )}
                   </Button>
