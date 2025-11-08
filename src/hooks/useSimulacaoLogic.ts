@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/authStore';
-import { 
+import {
   getMarcasVeiculos,
   getModelosVeiculos,
   getAnosVeiculos,
@@ -92,7 +92,7 @@ export function useSimulacaoLogic(
   const navigate = useNavigate();
 
   // ======== ESTADOS ========
-  
+
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
     nome: '',
@@ -100,7 +100,7 @@ export function useSimulacaoLogic(
     telefone: '',
     cpf: '',
   });
-  
+
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [contractingLoading, setContractingLoading] = useState(false);
@@ -112,13 +112,13 @@ export function useSimulacaoLogic(
   const [marcasCelulares, setMarcasCelulares] = useState<{ id: string; nome: string }[]>([]);
   const [modelosCelulares, setModelosCelulares] = useState<{ id: string; nome: string }[]>([]);
   // Estado de cores removido - API não existe
-  
+
   const [loadingCatalog, setLoadingCatalog] = useState<LoadingStates>({
     marcas: false,
     modelos: false,
     anos: false,
   });
-  
+
   const [loadingCelulares, setLoadingCelulares] = useState<LoadingStates>({
     marcas: false,
     modelos: false,
@@ -139,11 +139,11 @@ export function useSimulacaoLogic(
 
   const formatCurrency = (value: string | number | null | undefined): string => {
     if (!value || value === 'A calcular') return 'A calcular';
-    
+
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
     console.log(numValue)
     if (isNaN(numValue)) return 'A calcular';
-    
+
     return numValue.toLocaleString('pt-BR', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
@@ -163,17 +163,17 @@ export function useSimulacaoLogic(
     if (typeof m === 'string') {
       return { id: String(index !== undefined ? index + 1 : m), nome: m };
     }
-    
+
     if (m && typeof m === 'object') {
       const nomeValue = m.nome || m.descricao || m.name || m.label || m.value || String(m.id || index);
       const idValue = m.id || m.codigo || m.cod || m.value || String(index !== undefined ? index + 1 : '');
-      
+
       return {
         id: String(idValue),
         nome: typeof nomeValue === 'string' ? nomeValue : String(nomeValue)
       };
     }
-    
+
     return { id: String(index || ''), nome: String(m) };
   };
 
@@ -181,7 +181,7 @@ export function useSimulacaoLogic(
 
   const handleInputChange = (field: string, value: string) => {
     console.log('[Input] Change:', field, '=', value);
-    
+
     try {
       if (window.event) {
         window.event.stopPropagation?.();
@@ -190,7 +190,7 @@ export function useSimulacaoLogic(
     } catch (e) {
       // Ignora erros
     }
-    
+
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -207,7 +207,7 @@ export function useSimulacaoLogic(
     if (currentStep === 3) {
       const requiredPersonalFields = ['nome', 'email', 'telefone', 'cpf'];
       const missingPersonal = requiredPersonalFields.filter(field => !formData[field]);
-      
+
       if (missingPersonal.length > 0) {
         toast({
           title: "Dados pessoais incompletos",
@@ -231,15 +231,15 @@ export function useSimulacaoLogic(
 
   const handleAcceptContract = async (status: number) => {
     if (!simulationResult?.originalData) return;
-    
+
     setContractingLoading(true);
     try {
       console.log('[Contrato] Iniciando processo de contratação');
       console.log('[Contrato] Tipo de seguro:', tipoSeguro);
       console.log('[Contrato] originalData:', simulationResult.originalData);
-      
+
       let result;
-      
+
       if (tipoSeguro === 'veiculo') {
         const statusData = {
           placa: simulationResult.originalData.placa,
@@ -247,7 +247,7 @@ export function useSimulacaoLogic(
         };
         console.log('[Contrato] Atualizando status do veículo:', statusData);
         result = await updateSeguroVeiculoStatus(statusData);
-        
+
       } else if (tipoSeguro === 'celular') {
         const statusData = {
           imei: simulationResult.originalData.imei,
@@ -255,7 +255,7 @@ export function useSimulacaoLogic(
         };
         console.log('[Contrato] Atualizando status do celular:', statusData);
         result = await updateSeguroCelularStatus(statusData);
-        
+
       } else if (tipoSeguro === 'residencial') {
         const statusData = {
           cib: String(simulationResult.originalData.cib),
@@ -263,7 +263,7 @@ export function useSimulacaoLogic(
         };
         console.log('[Contrato] Atualizando status do residencial:', statusData);
         result = await updateSeguroImovelStatus(statusData);
-        
+
       } else {
         toast({
           title: "Tipo de seguro inválido",
@@ -272,13 +272,13 @@ export function useSimulacaoLogic(
         });
         return;
       }
-      
+
       if (result) {
         toast({
           title: "Contratação realizada com sucesso!",
           description: "Seu seguro foi contratado. Em breve você receberá mais informações.",
         });
-        
+
         return true;
       } else {
         toast({
@@ -300,18 +300,18 @@ export function useSimulacaoLogic(
       setContractingLoading(false);
     }
   };
-  
+
   const handleRejectContract = () => {
     setShowResult(false);
     setSimulationResult(null);
     setCurrentStep(2);
-    
+
     toast({
       title: "Editando simulação",
       description: "Você pode alterar os dados e fazer uma nova simulação.",
     });
   };
-  
+
   const handleReset = () => {
     setCurrentStep(1);
     setFormData({
@@ -368,10 +368,10 @@ export function useSimulacaoLogic(
           status: 0,
           simulationId: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         };
-        
+
         console.log('[Veículo] Dados da simulação:', simulationData);
         const result = await createSeguroVeiculo(simulationData);
-        
+
         if (result) {
           console.log('[Veículo] Resultado da API:', result);
           setSimulationResult({
@@ -381,17 +381,17 @@ export function useSimulacaoLogic(
           setShowResult(true);
           setCurrentStep(totalSteps);
         }
-        
+
       } else if (tipoSeguro === 'celular') {
         const valorAparelho = cleanValue(formData.valorCelular);
-        
 
-        
+
+
         const { simulationId, valorCelular: _, ...cleanData } = {
           ...formData,
           simulationId: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         };
-        
+
         simulationData = {
           imei: formData.imei,
           idCelular: formData.idCelular,
@@ -403,10 +403,10 @@ export function useSimulacaoLogic(
           qtdMeses: 12,
           status: 0,
         };
-        
+
         console.log('[Celular] Dados da simulação:', simulationData);
         const result = await createSeguroCelular(simulationData);
-        
+
         if (result) {
           console.log('[Celular] Resultado da API:', result);
           setSimulationResult({
@@ -416,17 +416,17 @@ export function useSimulacaoLogic(
           setShowResult(true);
           setCurrentStep(totalSteps);
         }
-        
+
       } else if (tipoSeguro === 'residencial') {
         const vlrImovel = cleanValue(formData.valorImovel);
         const area = parseFloat(formData.area || '0');
         const cepLimpo = formData.cepResidencia?.replace(/[^\d]/g, '') || '';
-        
+
         // CIB mais curto para evitar erro de 20 caracteres
         const timestamp = Date.now().toString().slice(-8); // Últimos 8 dígitos
         const random = Math.random().toString(36).substr(2, 4).toUpperCase(); // 4 caracteres
         const cib = `IM${timestamp}${random}`; // IM + 8 + 4 = 14 caracteres
-        
+
         simulationData = {
           cib: cib,
           cpfCliente: formData.cpf.replace(/[^\d]/g, ''),
@@ -443,7 +443,7 @@ export function useSimulacaoLogic(
           qtdMeses: 12,
           status: 0,
         };
-        
+
         console.log('[Residencial] Dados da simulação antes do envio:', JSON.stringify(simulationData, null, 2));
         console.log('[Residencial] Tamanhos dos campos:');
         // console.log('- cib:', simulationData.cib.length);
@@ -453,10 +453,10 @@ export function useSimulacaoLogic(
         // console.log('- bairro:', simulationData.bairro.length);
         // console.log('- cidade:', simulationData.cidade.length);
         // console.log('- estado:', simulationData.estado.length);
-        
+
         try {
           const result = await createSeguroImovel(simulationData);
-          
+
           if (result) {
             console.log('[Residencial] Resultado da API:', result);
             setSimulationResult({
@@ -471,7 +471,7 @@ export function useSimulacaoLogic(
           throw residentialError; // Re-throw para ser capturado pelo catch principal
         }
       }
-      
+
     } catch (error) {
       console.error('[Simulação] Erro:', error);
       toast({
@@ -494,7 +494,7 @@ export function useSimulacaoLogic(
         ...prev,
         nome: prev.nome || user.nome || '',
         email: prev.email || user.email || '',
-        telefone: prev.telefone || user.telefone || user.phone || '',
+        telefone: prev.telefone || user.telefone || '',
         cpf: prev.cpf || user.cpf || '',
       }));
     }
@@ -503,18 +503,18 @@ export function useSimulacaoLogic(
   // Carregar marcas de veículos
   useEffect(() => {
     if (tipoSeguro !== 'veiculo' || !isAuthenticated) return;
-    
+
     (async () => {
       try {
         setLoadingCatalog(s => ({ ...s, marcas: true }));
         const resp = await getMarcasVeiculos();
-        
+
         if (resp) {
           const raw = resp;
-          const arr = Array.isArray(raw) ? raw : 
-                     Array.isArray(raw?.marcas) ? raw.marcas : 
-                     Array.isArray(raw?.data) ? raw.data : [];
-          
+          const arr = Array.isArray(raw) ? raw :
+            Array.isArray(raw?.marcas) ? raw.marcas :
+              Array.isArray(raw?.data) ? raw.data : [];
+
           const mapped = arr.map((item: any, index: number) => toOption(item, index));
           setMarcas(mapped);
         } else {
@@ -536,29 +536,29 @@ export function useSimulacaoLogic(
       setModelos([]);
       return;
     }
-    
+
     (async () => {
       try {
         setLoadingCatalog(s => ({ ...s, modelos: true }));
         const marcaNome = marcas.find(m => String(m.id) === String(marca))?.nome || String(marca);
-        
+
         const resp = await getModelosVeiculos({ marca: String(marcaNome) });
-        
+
         if (resp) {
           const raw = resp;
           let modelosArray: unknown[] = [];
-          
+
           if (raw && typeof raw === 'object' && 'modelos' in raw && Array.isArray(raw.modelos)) {
             modelosArray = raw.modelos;
           } else if (Array.isArray(raw)) {
             modelosArray = raw;
           }
-          
+
           const mapped = modelosArray.map((modelo: unknown, index: number) => {
             if (typeof modelo === 'string') {
               return { id: String(index + 1), nome: modelo };
             }
-            
+
             if (typeof modelo === 'object' && modelo !== null) {
               const obj = modelo as Record<string, unknown>;
               const nome = obj.nome || obj.modelo || obj.name || String(obj.id || index + 1);
@@ -567,18 +567,18 @@ export function useSimulacaoLogic(
                 nome: String(nome)
               };
             }
-            
+
             return { id: String(index + 1), nome: String(modelo) };
           });
-          
+
           setModelos(mapped);
         } else {
           setModelos([]);
         }
-        
-        setFormData(prev => ({ 
-          ...prev, 
-          modelo: '', 
+
+        setFormData(prev => ({
+          ...prev,
+          modelo: '',
           ano: '',
           valorVeiculo: '',
           idVeiculo: 1
@@ -601,46 +601,46 @@ export function useSimulacaoLogic(
       setAnos([]);
       return;
     }
-    
+
     (async () => {
       try {
         setLoadingCatalog(s => ({ ...s, anos: true }));
         const marcaNome = marcas.find(m => String(m.id) === String(marca))?.nome || String(marca);
         const modeloNome = modelos.find(m => String(m.id) === String(modelo))?.nome || String(modelo);
-        
+
         const resp = await getAnosVeiculos({ marca: String(marcaNome), modelo: String(modeloNome) });
-        
+
         if (resp) {
           const raw = resp;
           let anosArray: unknown[] = [];
-          
+
           if (raw && typeof raw === 'object' && 'anos' in raw && Array.isArray(raw.anos)) {
             anosArray = raw.anos;
           } else if (Array.isArray(raw)) {
             anosArray = raw;
           }
-          
+
           const mapped = anosArray.map((ano: unknown, index: number) => {
             if (typeof ano === 'number' || typeof ano === 'string') {
               return { id: String(ano), nome: String(ano) };
             }
-            
+
             if (typeof ano === 'object' && ano !== null) {
               const obj = ano as Record<string, unknown>;
               const anoValue = obj.ano || obj.year || obj.valor || String(obj.id || index + 1);
               return { id: String(anoValue), nome: String(anoValue) };
             }
-            
+
             return { id: String(index + 1), nome: String(ano) };
           });
-          
+
           setAnos(mapped);
         } else {
           setAnos([]);
         }
-        
-        setFormData(prev => ({ 
-          ...prev, 
+
+        setFormData(prev => ({
+          ...prev,
           ano: '',
           valorVeiculo: '',
           idVeiculo: 1
@@ -657,18 +657,18 @@ export function useSimulacaoLogic(
   // Carregar marcas de celulares
   useEffect(() => {
     if (tipoSeguro !== 'celular' || !isAuthenticated) return;
-    
+
     (async () => {
       try {
         setLoadingCelulares(s => ({ ...s, marcas: true }));
         const resp = await getMarcasCelulares();
-        
+
         if (resp) {
           const raw = resp;
-          const arr = Array.isArray(raw) ? raw : 
-                     Array.isArray(raw?.marcas) ? raw.marcas : 
-                     Array.isArray(raw?.data) ? raw.data : [];
-          
+          const arr = Array.isArray(raw) ? raw :
+            Array.isArray(raw?.marcas) ? raw.marcas :
+              Array.isArray(raw?.data) ? raw.data : [];
+
           const mapped = arr.map((item: any, index: number) => toOption(item, index));
           setMarcasCelulares(mapped);
         } else {
@@ -690,26 +690,26 @@ export function useSimulacaoLogic(
       setModelosCelulares([]);
       return;
     }
-    
+
     (async () => {
       try {
         setLoadingCelulares(s => ({ ...s, modelos: true }));
         const marcaNome = marcasCelulares.find(m => String(m.id) === String(marcaCelular))?.nome || String(marcaCelular);
-        
+
         const resp = await getModelosCelulares({ marca: String(marcaNome) });
-        
+
         if (resp) {
           const raw = resp;
-          const arr = Array.isArray(raw) ? raw : 
-                     Array.isArray(raw?.modelos) ? raw.modelos : 
-                     Array.isArray(raw?.data) ? raw.data : [];
-          
+          const arr = Array.isArray(raw) ? raw :
+            Array.isArray(raw?.modelos) ? raw.modelos :
+              Array.isArray(raw?.data) ? raw.data : [];
+
           const mapped = arr.map((item: any, index: number) => toOption(item, index));
           setModelosCelulares(mapped);
         } else {
           setModelosCelulares([]);
         }
-        
+
         setFormData(prev => ({ ...prev, modeloCelular: '' }));
       } catch (e) {
         console.error('Erro ao carregar modelos de celulares:', e);
@@ -724,115 +724,115 @@ export function useSimulacaoLogic(
 
   // Memoizar toast para evitar re-renders desnecessários
   const memoizedToast = useCallback(toast, [toast]);
-  
+
   // Buscar valor do veículo FIPE quando marca, modelo e ano estiverem selecionados
   useEffect(() => {
     const marca = formData.marca;
     const modelo = formData.modelo;
     const ano = formData.ano;
-    
+
     if (tipoSeguro === 'veiculo' && marca && modelo && ano && isAuthenticated) {
-    
-    // Limpa valor anterior quando mudam os dados
-    setFormData(prev => ({
-      ...prev,
-      valorVeiculo: '',
-      idVeiculo: 1
-    }));
-    
-    (async () => {
-      try {
-        const marcaNome = marcas.find(m => String(m.id) === String(marca))?.nome || String(marca);
-        const modeloNome = modelos.find(m => String(m.id) === String(modelo))?.nome || String(modelo);
-        const anoNumero = Number(ano);
-        
-        console.log('[FIPE] Buscando valor para:', { marcaNome, modeloNome, anoNumero });
-        
-        const resp = await getVeiculo({ marca: marcaNome, modelo: modeloNome, ano: anoNumero });
-        
-        if (resp?.valor) {
-          const valorFormatado = (resp.valor);
-          setFormData(prev => ({
-            ...prev,
-            valorVeiculo: valorFormatado,
-            idVeiculo: resp.idVeiculo || 1
-          }));
-          
-          memoizedToast({
-            title: "Valor FIPE carregado",
-            description: `${marcaNome} ${modeloNome} ${ano}: R$ ${valorFormatado}`,
-          });
-        } else {
-          console.log('[FIPE] Veículo não encontrado na base');
+
+      // Limpa valor anterior quando mudam os dados
+      setFormData(prev => ({
+        ...prev,
+        valorVeiculo: '',
+        idVeiculo: 1
+      }));
+
+      (async () => {
+        try {
+          const marcaNome = marcas.find(m => String(m.id) === String(marca))?.nome || String(marca);
+          const modeloNome = modelos.find(m => String(m.id) === String(modelo))?.nome || String(modelo);
+          const anoNumero = Number(ano);
+
+          console.log('[FIPE] Buscando valor para:', { marcaNome, modeloNome, anoNumero });
+
+          const resp = await getVeiculo({ marca: marcaNome, modelo: modeloNome, ano: anoNumero });
+
+          if (resp?.valor) {
+            const valorFormatado = (resp.valor);
+            setFormData(prev => ({
+              ...prev,
+              valorVeiculo: valorFormatado,
+              idVeiculo: resp.idVeiculo || 1
+            }));
+
+            memoizedToast({
+              title: "Valor FIPE carregado",
+              description: `${marcaNome} ${modeloNome} ${ano}: R$ ${valorFormatado}`,
+            });
+          } else {
+            console.log('[FIPE] Veículo não encontrado na base');
+            setFormData(prev => ({
+              ...prev,
+              valorVeiculo: '',
+              idVeiculo: 1
+            }));
+          }
+        } catch (error) {
+          console.error('Erro ao buscar valor FIPE:', error);
           setFormData(prev => ({
             ...prev,
             valorVeiculo: '',
             idVeiculo: 1
           }));
         }
-      } catch (error) {
-        console.error('Erro ao buscar valor FIPE:', error);
-        setFormData(prev => ({
-          ...prev,
-          valorVeiculo: '',
-          idVeiculo: 1
-        }));
-      }
-    })();
-  }
+      })();
+    }
   }, [formData.marca, formData.modelo, formData.ano, tipoSeguro, isAuthenticated, marcas, modelos, memoizedToast]);
 
-    // Buscar valor do celular quando marca e modelo estiverem selecionados
+  // Buscar valor do celular quando marca e modelo estiverem selecionados
   useEffect(() => {
 
     const marca = formData.marcaCelular;
     const modelo = formData.modeloCelular;
-    
-    if (tipoSeguro === 'celular' && marca && modelo && isAuthenticated) {
-    
-    // Limpa valor anterior quando mudam os dados
-    setFormData(prev => ({
-      ...prev,
-      valorCelular: '',
-      idCelular: 0
-    }));
-    
-    (async () => {
-      try {
-        const marcaNome = marcasCelulares.find(m => String(m.id) === String(marca))?.nome || String(marca);
-        const modeloNome = modelosCelulares.find(m => String(m.id) === String(modelo))?.nome || String(modelo);
-        
-        
-        const resp = await getCelular({ marca: marcaNome, modelo: modeloNome,});
 
-        
-        if (resp && resp.valor) {
-          const valorFormatado = (resp.valor);
-          console.log(valorFormatado)
-          console.log(resp.valor)
+    if (tipoSeguro === 'celular' && marca && modelo && isAuthenticated) {
+
+      // Limpa valor anterior quando mudam os dados
+      setFormData(prev => ({
+        ...prev,
+        valorCelular: '',
+        idCelular: 0
+      }));
+
+      (async () => {
+        try {
+          const marcaNome = marcasCelulares.find(m => String(m.id) === String(marca))?.nome || String(marca);
+          const modeloNome = modelosCelulares.find(m => String(m.id) === String(modelo))?.nome || String(modelo);
+
+
+          const resp = await getCelular({ marca: marcaNome, modelo: modeloNome, });
+
+
+          if (resp && resp.valor) {
+            const valorFormatado = (resp.valor);
+            console.log(valorFormatado)
+            console.log(resp.valor)
+            setFormData(prev => ({
+              ...prev,
+              valorCelular: valorFormatado,
+              idCelular: resp.idCelular
+            }));
+
+          } else {
+            console.log('[FIPE] Veículo não encontrado na base');
+            setFormData(prev => ({
+              ...prev,
+              valorCelular: '',
+              idCelular: 0
+            }));
+          }
+        } catch (error) {
+          console.error('Erro ao buscar valor:', error);
           setFormData(prev => ({
             ...prev,
-            valorCelular: valorFormatado,
-            idCelular: resp.idCelular
-          }));
-          
-        } else {
-          console.log('[FIPE] Veículo não encontrado na base');
-          setFormData(prev => ({
-            ...prev,
-            valorCelular: '',
+            valorVeiculo: '',
             idCelular: 0
           }));
         }
-      } catch (error) {
-        console.error('Erro ao buscar valor:', error);
-        setFormData(prev => ({
-          ...prev,
-          valorVeiculo: '',
-          idCelular: 0
-        }));
-      }
-    })();
+      })();
     }
   }, [formData.marcaCelular, formData.modeloCelular, tipoSeguro, isAuthenticated, marcasCelulares, modelosCelulares]);
 
@@ -849,7 +849,7 @@ export function useSimulacaoLogic(
     currentLoading,
     progress,
     totalSteps,
-    
+
     // Catálogos
     marcas,
     modelos,
@@ -859,7 +859,7 @@ export function useSimulacaoLogic(
     // coresCelulares removido - API não existe
     loadingCatalog,
     loadingCelulares,
-    
+
     // Handlers
     handleInputChange,
     handleNextStep,
@@ -868,7 +868,7 @@ export function useSimulacaoLogic(
     handleAcceptContract,
     handleRejectContract,
     handleReset,
-    
+
     // Utilitários
     formatCurrency,
   };

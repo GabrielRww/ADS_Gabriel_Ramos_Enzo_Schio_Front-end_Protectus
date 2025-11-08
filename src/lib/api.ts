@@ -9,48 +9,48 @@ const getApiConfig = () => {
       baseURL: import.meta.env.VITE_LOCAL_API_URL || API_BASE_URL,
       loginClientePath: import.meta.env.VITE_LOCAL_LOGIN_CLIENTE_PATH || '/auth/login-cliente',
       loginFuncionarioPath: import.meta.env.VITE_LOCAL_LOGIN_FUNCIONARIO_PATH || '/auth/login-funcionario',
-      
+
       // Veículos
       vehicleMarcasPath: import.meta.env.VITE_LOCAL_VEHICLE_MARCAS_PATH || '/insurances/marcas',
       vehicleModelosPath: import.meta.env.VITE_LOCAL_VEHICLE_MODELOS_PATH || '/insurances/modelos',
       vehicleAnosPath: import.meta.env.VITE_LOCAL_VEHICLE_ANOS_PATH || '/insurances/anos',
       seguroVeiculoPath: import.meta.env.VITE_LOCAL_SEGURO_VEICULO_PATH || '/insurances/seguro-veiculo',
-      
+
       // Celulares
       celularMarcasPath: import.meta.env.VITE_LOCAL_CELULAR_MARCAS_PATH || '/insurances/celulares/marcas',
       celularModelosPath: import.meta.env.VITE_LOCAL_CELULAR_MODELOS_PATH || '/insurances/celulares/modelos',
       celularCoresPath: import.meta.env.VITE_LOCAL_CELULAR_CORES_PATH || '/insurances/celulares/cores',
       seguroCelularPath: import.meta.env.VITE_LOCAL_SEGURO_CELULAR_PATH || '/insurances/seguro-celular',
-      
+
       // Residencial
       seguroResidencialPath: import.meta.env.VITE_LOCAL_SEGURO_RESIDENCIAL_PATH || '/insurances/seguro-imovel',
-      
+
       // Usuários
       usersClientePath: import.meta.env.VITE_LOCAL_USERS_CLIENTE_PATH || '/users/cliente',
     };
   }
-  
+
   // Configurações de produção (Railway)
   return {
     baseURL: API_BASE_URL,
     loginClientePath: import.meta.env.VITE_LOGIN_CLIENTE_PATH || '/auth/login-cliente',
     loginFuncionarioPath: import.meta.env.VITE_LOGIN_FUNCIONARIO_PATH || '/auth/login-funcionario',
-    
+
     // Veículos
     vehicleMarcasPath: import.meta.env.VITE_VEHICLE_MARCAS_PATH || '/insurances/marcas',
     vehicleModelosPath: import.meta.env.VITE_VEHICLE_MODELOS_PATH || '/insurances/modelos',
     vehicleAnosPath: import.meta.env.VITE_VEHICLE_ANOS_PATH || '/insurances/anos',
     seguroVeiculoPath: '/insurances/seguro-veiculo',
-    
+
     // Celulares (baseados no backend analisado)
     celularMarcasPath: '/insurances/celulares/marcas',
     celularModelosPath: '/insurances/celulares/modelos',
     celularCoresPath: '/insurances/celulares/cores',
     seguroCelularPath: '/insurances/seguro-celular',
-    
+
     // Residencial (preparado para implementação)
     seguroResidencialPath: '/insurances/seguro-imovel',
-    
+
     // Usuários
     usersClientePath: '/users/cliente',
   };
@@ -72,10 +72,10 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
-  name: string;
+  nome: string;
   email: string;
   password: string;
-  phone: string;
+  telefone: string;
   cpf: string;
   cep: string;
   address: string;
@@ -85,10 +85,10 @@ export interface RegisterRequest {
 export interface User {
   id: string;
   email: string;
-  name?: string; // Adicionando propriedade name que estava sendo usada
+  nome?: string;
   role: 'cliente' | 'funcionario' | 'gerente';
   avatar?: string;
-  phone?: string;
+  telefone?: string;
   cpf?: string;
   cep?: string;
   address?: string;
@@ -107,7 +107,7 @@ class ApiService {
     // Sanitiza tokens inválidos ('undefined', 'null', vazio)
     if (!stored || stored === 'undefined' || stored === 'null') {
       this.token = null;
-      try { localStorage.removeItem('protectus-token'); } catch {}
+      try { localStorage.removeItem('protectus-token'); } catch { }
     } else {
       this.token = stored;
     }
@@ -145,13 +145,13 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        
+
         // Tratamento específico para erros estruturados do backend
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        
+
         if (errorData.errors && Array.isArray(errorData.errors)) {
           // Formato: { "errors": [[{ "status": 400, "title": "...", "details": "..." }]] }
           const messages: string[] = [];
@@ -179,7 +179,7 @@ class ApiService {
           // Formato alternativo: { "details": "..." }
           errorMessage = errorData.details;
         }
-        
+
         return {
           success: false,
           error: errorMessage,
@@ -206,7 +206,7 @@ class ApiService {
       return;
     }
     this.token = token;
-    try { localStorage.setItem('protectus-token', token); } catch {}
+    try { localStorage.setItem('protectus-token', token); } catch { }
   }
 
   clearToken() {
@@ -242,14 +242,14 @@ class ApiService {
     const role: User['role'] = isManager
       ? 'gerente'
       : ((rawUser as any)?.tipo === 'funcionario' ? 'funcionario' : 'cliente');
-    const phoneRaw = (rawUser as any)?.telefone || (rawUser as any)?.phone || (rawUser as any)?.celular || (rawUser as any)?.cel || (rawUser as any)?.tel;
+    const telefoneRaw = (rawUser as any)?.telefone || (rawUser as any)?.telefone || (rawUser as any)?.celular || (rawUser as any)?.cel || (rawUser as any)?.tel;
     const cpfRaw = (rawUser as any)?.cpf || (rawUser as any)?.documento || (rawUser as any)?.doc;
     const user: User = {
       id: (rawUser as any)?.codFuncionario || (rawUser as any)?.codCliente || (rawUser as any)?.id || credentials.email,
-      name: (rawUser as any)?.nome || (rawUser as any)?.name || (rawUser as any)?.des_usuario || credentials.email.split('@')[0],
+      nome: (rawUser as any)?.nome || (rawUser as any)?.nome || (rawUser as any)?.des_usuario || credentials.email.split('@')[0],
       email: (rawUser as any)?.email || credentials.email,
       role,
-      phone: typeof phoneRaw === 'string' ? phoneRaw : (typeof phoneRaw === 'number' ? String(phoneRaw) : undefined),
+      telefone: typeof telefoneRaw === 'string' ? telefoneRaw : (typeof telefoneRaw === 'number' ? String(telefoneRaw) : undefined),
       cpf: typeof cpfRaw === 'string' ? cpfRaw : (typeof cpfRaw === 'number' ? String(cpfRaw) : undefined),
     };
     return { success: true, data: { user, token } };
@@ -258,9 +258,9 @@ class ApiService {
   async register(userData: RegisterRequest): Promise<ApiResponse<{ user: User; token?: string }>> {
     // Backend de cadastro de cliente em '/users/cliente' (DTO exige apenas estes campos)
     const payload = {
-      nome: userData.name,
+      nome: userData.nome,
       email: userData.email,
-      telefone: (userData.phone || '').replace(/\D/g, ''),
+      telefone: (userData.telefone || '').replace(/\D/g, ''),
       cpf: (userData.cpf || '').replace(/\D/g, ''),
       cep: (userData.cep || '').replace(/\D/g, ''),
       senha: userData.password,
@@ -276,24 +276,24 @@ class ApiService {
 
     // Muitas APIs não retornam token no cadastro; normalizamos o usuário básico
     const created = resp.data || {};
-    const phoneRaw = created.telefone || created.phone || userData.phone;
+    const telefoneRaw = created.telefone || created.telefone || userData.telefone;
     const cpfRaw = created.cpf || created.documento || userData.cpf;
     const cepRaw = created.cep || userData.cep;
     const user: User = {
       id: created.id || created.codCliente || created.cod_cliente || created.cod || created.email || userData.email,
-      name: created.nome || created.des_usuario || userData.name,
+      nome: created.nome || created.des_usuario || userData.nome,
       email: created.email || userData.email,
       role: 'cliente',
-      phone: typeof phoneRaw === 'string' ? phoneRaw : (typeof phoneRaw === 'number' ? String(phoneRaw) : userData.phone),
+      telefone: typeof telefoneRaw === 'string' ? telefoneRaw : (typeof telefoneRaw === 'number' ? String(telefoneRaw) : userData.telefone),
       cpf: typeof cpfRaw === 'string' ? cpfRaw : (typeof cpfRaw === 'number' ? String(cpfRaw) : userData.cpf),
       cep: typeof cepRaw === 'string' ? cepRaw : (typeof cepRaw === 'number' ? String(cepRaw) : userData.cep),
       address: userData.address, // Sempre pega do formulário pois backend não tem
     };
-    
+
     console.log('API Register: Resposta do backend', created);
     console.log('API Register: User construído', user);
-    console.log('API Register: userData original', { phone: userData.phone, cpf: userData.cpf, cep: userData.cep, address: userData.address });
-    
+    console.log('API Register: userData original', { telefone: userData.telefone, cpf: userData.cpf, cep: userData.cep, address: userData.address });
+
     const token = created.access_token || created.token; // se existir
     return { success: true, data: { user, token } };
   }
@@ -337,13 +337,13 @@ class ApiService {
     const raw = resp.data as any;
     const item = Array.isArray(raw) ? raw[0] : (raw.data && Array.isArray(raw.data) ? raw.data[0] : (raw.item || raw));
     if (!item) return { success: false, error: 'Perfil vazio' };
-    const phoneRaw = item.telefone || item.phone || item.celular || item.cel || item.tel;
+    const telefoneRaw = item.telefone || item.telefone || item.celular || item.cel || item.tel;
     const cpfRaw = item.cpf || item.documento || item.doc;
     const cepRaw = item.cep || item.CEP || item.zip;
     const addressRaw = item.endereco || item.logradouro || item.address || item.rua;
     const numberRaw = item.numero || item.num_endereco || item.number || item.num;
     const out: Partial<User> = {
-      phone: typeof phoneRaw === 'string' ? phoneRaw : (typeof phoneRaw === 'number' ? String(phoneRaw) : undefined),
+      telefone: typeof telefoneRaw === 'string' ? telefoneRaw : (typeof telefoneRaw === 'number' ? String(telefoneRaw) : undefined),
       cpf: typeof cpfRaw === 'string' ? cpfRaw : (typeof cpfRaw === 'number' ? String(cpfRaw) : undefined),
       cep: typeof cepRaw === 'string' ? cepRaw : (typeof cepRaw === 'number' ? String(cepRaw) : undefined),
       address: typeof addressRaw === 'string' ? addressRaw : undefined,
@@ -512,10 +512,10 @@ class ApiService {
     // Mapeia nomes comuns; backend aceita body
     const payload = {
       ...data,
-      nome: data.nome ?? data.des_usuario ?? data.name,
-      des_usuario: data.des_usuario ?? data.nome ?? data.name,
+      nome: data.nome ?? data.des_usuario ?? data.nome,
+      des_usuario: data.des_usuario ?? data.nome ?? data.nome,
       email: data.email,
-      telefone: (data.telefone ?? data.phone ?? '').replace?.(/\D/g, '') ?? data.telefone,
+      telefone: (data.telefone ?? data.telefone ?? '').replace?.(/\D/g, '') ?? data.telefone,
       cpf: (data.cpf ?? data.documento ?? '').replace?.(/\D/g, '') ?? data.cpf,
       cidade: data.cidade ?? data.city,
       estado: data.estado ?? data.uf,
@@ -532,9 +532,9 @@ class ApiService {
   async updateFuncionario(data: any): Promise<ApiResponse<any>> {
     const payload = {
       ...data,
-      nome: data.nome ?? data.des_usuario ?? data.name,
-      des_usuario: data.des_usuario ?? data.nome ?? data.name,
-      telefone: (data.telefone ?? data.phone ?? '').replace?.(/\D/g, '') ?? data.telefone,
+      nome: data.nome ?? data.des_usuario ?? data.nome,
+      des_usuario: data.des_usuario ?? data.nome ?? data.nome,
+      telefone: (data.telefone ?? data.telefone ?? '').replace?.(/\D/g, '') ?? data.telefone,
       cpf: (data.cpf ?? data.documento ?? '').replace?.(/\D/g, '') ?? data.cpf,
       IndGerente: Number(data.indGerente ?? data.IndGerente ?? data.ind_gerente ?? 0) === 1 ? 1 : 0,
     };
@@ -574,12 +574,12 @@ class ApiService {
     if (simulationData.cpfCliente) {
       try {
         console.log('[INFO] Verificando cliente CPF:', simulationData.cpfCliente);
-        
+
         // Primeiro verifica se o cliente já existe
         const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
           method: 'GET',
         });
-        
+
         if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
           console.log('[OK] Cliente já existe, continuando com simulação');
         } else {
@@ -593,7 +593,7 @@ class ApiService {
             senha: '123456',
             status: 1
           };
-          
+
           await this.request<any>(apiConfig.usersClientePath, {
             method: 'POST',
             body: JSON.stringify(clientData),
@@ -693,7 +693,7 @@ class ApiService {
     if (params.marca) queryParams.append('marca', params.marca);
     if (params.modelo) queryParams.append('modelo', params.modelo);
     if (queryParams.toString()) endpoint += `?${queryParams.toString()}`;
-    
+
     return this.request<any[]>(endpoint, {
       method: 'GET',
       headers: this.buildVehicleHeaders()
@@ -701,16 +701,16 @@ class ApiService {
   }
 
   // Simulação de seguro de celular
-  async simulateCellphoneInsurance(simulationData: any): Promise<ApiResponse<any>> {
+  async simulateCelltelefoneInsurance(simulationData: any): Promise<ApiResponse<any>> {
     // Primeiro, verificar/criar cliente se temos CPF
     if (simulationData.cpfCliente) {
       try {
         console.log('[INFO] Verificando cliente CPF:', simulationData.cpfCliente);
-        
+
         const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
           method: 'GET',
         });
-        
+
         if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
           console.log('[OK] Cliente já existe, continuando com simulação');
         } else {
@@ -724,7 +724,7 @@ class ApiService {
             senha: '123456',
             status: 1
           };
-          
+
           await this.request<any>(apiConfig.usersClientePath, {
             method: 'POST',
             body: JSON.stringify(clientData),
@@ -748,11 +748,11 @@ class ApiService {
     if (simulationData.cpfCliente) {
       try {
         console.log('[INFO] Verificando cliente CPF:', simulationData.cpfCliente);
-        
+
         const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
           method: 'GET',
         });
-        
+
         if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
           console.log('[OK] Cliente já existe, continuando com simulação');
         } else {
@@ -766,7 +766,7 @@ class ApiService {
             senha: '123456',
             status: 1
           };
-          
+
           await this.request<any>(apiConfig.usersClientePath, {
             method: 'POST',
             body: JSON.stringify(clientData),
@@ -794,7 +794,7 @@ class ApiService {
   }
 
   // Atualizar status do seguro de celular (contratação)
-  async updateCellphoneInsuranceStatus(statusData: { imei: string; status: number }): Promise<ApiResponse<any>> {
+  async updateCelltelefoneInsuranceStatus(statusData: { imei: string; status: number }): Promise<ApiResponse<any>> {
     console.log('[Status] Atualizando status do seguro de celular:', statusData);
     return this.request<any>(`${apiConfig.seguroCelularPath}/status`, {
       method: 'PATCH',
@@ -814,32 +814,32 @@ class ApiService {
   // Buscar valor FIPE real
   async getValorFipe(params: { marca: string; modelo: string; ano: string }): Promise<ApiResponse<any>> {
     console.log('[FIPE] Buscando valor FIPE:', params);
-    
+
     try {
       // Primeiro tenta buscar do backend (endpoint correto conforme backend)
       // Tenta diferentes formatos de parâmetros
       const cleanMarca = params.marca.replace(/^(GM\s*-\s*)?/, '').trim(); // Remove "GM - " se presente
       const cleanModelo = params.modelo.replace(/\s+/g, ' ').trim(); // Normaliza espaços
-      
+
       const endpoints = [
         `/insurances/veiculo?marca=${encodeURIComponent(params.marca)}&modelo=${encodeURIComponent(params.modelo)}&ano=${encodeURIComponent(params.ano)}`,
         `/insurances/veiculo?marca=${encodeURIComponent(cleanMarca)}&modelo=${encodeURIComponent(cleanModelo)}&ano=${encodeURIComponent(params.ano)}`,
       ];
-      
+
       for (const endpoint of endpoints) {
         try {
           console.log('[API] Tentando endpoint do backend:', endpoint);
-          
+
           const backendResponse = await this.request<any>(endpoint, {
             method: 'GET',
           });
-          
+
           console.log(' Resposta do backend:', backendResponse);
-          
+
           if (backendResponse.success && backendResponse.data) {
             // O backend retorna um objeto CatalogoVeiculosEntity com a propriedade "valor"
             const valorFipe = backendResponse.data.valor;
-            
+
             if (valorFipe) {
               console.log(' Valor FIPE encontrado no backend:', valorFipe);
               return {
@@ -866,7 +866,7 @@ class ApiService {
           continue; // Tenta o próximo endpoint
         }
       }
-      
+
       // Se não teve sucesso, loga o motivo
       console.log('[AVISO] Nenhum endpoint do backend retornou valor FIPE válido, tentando API pública...');
     } catch (error) {
@@ -878,15 +878,15 @@ class ApiService {
       // Se backend não tiver, usa API pública da FIPE
       // API da FIPE pública (paralelo.ws ou similar)
       const fipeApiUrl = 'https://parallelum.com.br/fipe/api/v1/carros';
-      
+
       // 1. Buscar código da marca
       const marcasResponse = await fetch(`${fipeApiUrl}/marcas`);
       const marcas = await marcasResponse.json();
-      const marcaEncontrada = marcas.find((m: any) => 
+      const marcaEncontrada = marcas.find((m: any) =>
         m.nome.toLowerCase().includes(params.marca.toLowerCase()) ||
         params.marca.toLowerCase().includes(m.nome.toLowerCase())
       );
-      
+
       if (!marcaEncontrada) {
         return { success: false, error: 'Marca não encontrada na FIPE' };
       }
@@ -894,11 +894,11 @@ class ApiService {
       // 2. Buscar código do modelo
       const modelosResponse = await fetch(`${fipeApiUrl}/marcas/${marcaEncontrada.codigo}/modelos`);
       const modelosData = await modelosResponse.json();
-      const modeloEncontrado = modelosData.modelos?.find((m: any) => 
+      const modeloEncontrado = modelosData.modelos?.find((m: any) =>
         m.nome.toLowerCase().includes(params.modelo.toLowerCase()) ||
         params.modelo.toLowerCase().includes(m.nome.toLowerCase())
       );
-      
+
       if (!modeloEncontrado) {
         return { success: false, error: 'Modelo não encontrado na FIPE' };
       }
@@ -906,10 +906,10 @@ class ApiService {
       // 3. Buscar código do ano
       const anosResponse = await fetch(`${fipeApiUrl}/marcas/${marcaEncontrada.codigo}/modelos/${modeloEncontrado.codigo}/anos`);
       const anos = await anosResponse.json();
-      const anoEncontrado = anos.find((a: any) => 
+      const anoEncontrado = anos.find((a: any) =>
         a.nome.includes(params.ano) || a.codigo.includes(params.ano)
       );
-      
+
       if (!anoEncontrado) {
         return { success: false, error: 'Ano não encontrado na FIPE' };
       }
@@ -917,7 +917,7 @@ class ApiService {
       // 4. Buscar valor FIPE
       const valorResponse = await fetch(`${fipeApiUrl}/marcas/${marcaEncontrada.codigo}/modelos/${modeloEncontrado.codigo}/anos/${anoEncontrado.codigo}`);
       const valorData = await valorResponse.json();
-      
+
       if (valorData.Valor) {
         return {
           success: true,

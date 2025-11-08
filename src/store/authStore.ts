@@ -7,10 +7,10 @@ import { apiService, User } from '@/lib/api';
 export type UserRole = 'cliente' | 'funcionario' | 'gerente';
 
 export interface RegisterData {
-  name: string;
+  nome: string;
   email: string;
   password: string;
-  phone: string;
+  telefone: string;
   cpf: string;
   cep: string;
   address: string;
@@ -57,7 +57,7 @@ export const useAuthStore = create<AuthState>()(
                 previous = JSON.parse(prevStr);
                 console.log('Login: Dados anteriores encontrados', {
                   prevEmail: previous?.email,
-                  prevPhone: previous?.phone,
+                  prevtelefone: previous?.telefone,
                   prevCpf: previous?.cpf,
                   prevAddress: previous?.address
                 });
@@ -69,16 +69,17 @@ export const useAuthStore = create<AuthState>()(
             
             let merged = {
               ...user,
-              phone: user.phone || (shouldMerge ? previous?.phone : undefined),
+              telefone: user.telefone || (shouldMerge ? previous?.telefone : undefined),
               cpf: user.cpf || (shouldMerge ? previous?.cpf : undefined),
+              nome: user.nome || (shouldMerge ? previous?.cpf : undefined),
               cep: user.cep || (shouldMerge ? previous?.cep : undefined),
               address: user.address || (shouldMerge ? previous?.address : undefined),
               addressNumber: user.addressNumber || (shouldMerge ? previous?.addressNumber : undefined),
             } as User;
             
             console.log('Login: Usuário mesclado', {
-              userFromBackend: { id: user.id, name: user.name, email: user.email, phone: user.phone, cpf: user.cpf },
-              merged: { id: merged.id, name: merged.name, email: merged.email, phone: merged.phone, cpf: merged.cpf, address: merged.address },
+              userFromBackend: { id: user.id, nome: user.nome, email: user.email, telefone: user.telefone, cpf: user.cpf },
+              merged: { id: merged.id, nome: merged.nome, email: merged.email, telefone: merged.telefone, cpf: merged.cpf, address: merged.address },
               shouldMerge
             });
             
@@ -153,16 +154,16 @@ export const useAuthStore = create<AuthState>()(
             // Enriquece o user com os dados do formulário que podem não ter vindo do backend
             const enrichedUser = {
               ...user,
-              phone: user.phone || userData.phone,
+              telefone: user.telefone || userData.telefone,
               cpf: user.cpf || userData.cpf,
               cep: user.cep || userData.cep,
               address: user.address || userData.address,
             };
             
             console.log('Register: Usuário enriquecido', {
-              fromBackend: { phone: user.phone, cpf: user.cpf },
-              fromForm: { phone: userData.phone, cpf: userData.cpf, address: userData.address },
-              enriched: { phone: enrichedUser.phone, cpf: enrichedUser.cpf, address: enrichedUser.address }
+              fromBackend: { telefone: user.telefone, cpf: user.cpf },
+              fromForm: { telefone: userData.telefone, cpf: userData.cpf, address: userData.address },
+              enriched: { telefone: enrichedUser.telefone, cpf: enrichedUser.cpf, address: enrichedUser.address }
             });
             
             // Se o backend NÃO retornar token no cadastro, faz login automático
@@ -180,7 +181,7 @@ export const useAuthStore = create<AuthState>()(
                 if (currentUser) {
                   const mergedAfterLogin = {
                     ...currentUser,
-                    phone: currentUser.phone || enrichedUser.phone || userData.phone,
+                    telefone: currentUser.telefone || enrichedUser.telefone || userData.telefone,
                     cpf: currentUser.cpf || enrichedUser.cpf || userData.cpf,
                     cep: currentUser.cep || enrichedUser.cep || userData.cep,
                     address: currentUser.address || enrichedUser.address || userData.address,
