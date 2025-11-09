@@ -1,5 +1,6 @@
 // src/service/index.ts
 import axios from "axios";
+import { EfetivaSeguroDto, SegurosPendentesV2Res } from "./interface";
 
 /**
  * CONFIGURAÇÃO CENTRALIZADA DA API
@@ -56,17 +57,17 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Busca token em múltiplas fontes possíveis
-    const token = localStorage.getItem("access_token") || 
-                  localStorage.getItem("protectus-token") || 
-                  localStorage.getItem("token");
-    
+    const token = localStorage.getItem("access_token") ||
+      localStorage.getItem("protectus-token") ||
+      localStorage.getItem("token");
+
     if (token && config.headers) {
       config.headers["Authorization"] = `Bearer ${token}`;
       console.log('[API] Token enviado:', token.substring(0, 20) + '...');
     } else {
       console.warn('[API] Nenhum token encontrado para autenticação');
     }
-    
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -196,7 +197,7 @@ export const getVeiculo = async (params?: { marca: string; modelo: string; ano: 
   return resp.data;
 };
 
-export const getCelular = async (params?: { marca: string; modelo: string;}) => {
+export const getCelular = async (params?: { marca: string; modelo: string; }) => {
   const resp = await api.get('/insurances/celular', { params });
   return resp.data;
 };
@@ -233,4 +234,14 @@ export const ENDPOINTS = {
   cellphones: CELLPHONE_ENDPOINTS,
   residential: RESIDENTIAL_ENDPOINTS,
   baseURL: API_BASE,
+};
+
+export const getSegurosPendentes = async (): Promise<SegurosPendentesV2Res[]> => {
+  const response = await api.post(`/insurances/seguros-pendentes-v2`);
+  return response.data;
+};
+
+export const postEfetivaSeguro = async (data: EfetivaSeguroDto): Promise<{ status: string }> => {
+  const response = await api.post(`/insurances/efetiva-seguro`, data);
+  return response.data;
 };

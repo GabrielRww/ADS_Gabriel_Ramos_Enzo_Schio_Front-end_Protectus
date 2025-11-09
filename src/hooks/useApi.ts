@@ -14,13 +14,9 @@ export function useSimulation() {
     setLoading(true);
     setError(null);
     try {
-      console.log(' Enviando simulação para API:', payload);
       const resp = await apiService.simulateInsurance(payload);
-      console.log(' Resposta completa da API:', resp);
       
       if (resp.success) {
-        console.log(' Simulação bem-sucedida, dados:', resp.data);
-        // resp.data pode conter o resultado; se não houver, retorne objeto vazio
         return (resp.data as SimulationResult) ?? {};
       }
       

@@ -8,133 +8,164 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Eye, CheckCircle, XCircle, Clock, DollarSign, FileText, User, Car } from "lucide-react";
+import { Search, Eye, CheckCircle, XCircle, Clock, DollarSign, House, User, Car, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { getSegurosPendentes, postEfetivaSeguro } from "@/service";
+import { EfetivaSeguroDto, SegurosPendentesV2Res } from "@/service/interface";
 
 export default function AdminPropostas() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterType, setFilterType] = useState("all");
+  const [filterStatus, setFilterStatus] = useState(null);
+  const [filterType, setFilterType] = useState(null);
 
-  const proposals = [
-    {
-      id: "P001245",
-      client: "João Silva",
-      clientId: "C001",
-      type: "Veículo",
-      vehicle: "Honda Civic 2022",
-      plate: "ABC-1234",
-      value: 45000,
-      premium: 1800,
-      status: "Pendente",
-      createdAt: "2024-01-20",
-      agent: "Maria Santos",
-      coverage: "Compreensiva"
-    },
-    {
-      id: "P001246",
-      client: "Ana Costa",
-      clientId: "C004",
-      type: "Residencial",
-      property: "Casa 120m²",
-      address: "Rua das Flores, 123",
-      value: 350000,
-      premium: 2400,
-      status: "Aprovada",
-      createdAt: "2024-01-19",
-      agent: "Pedro Lima",
-      coverage: "Total"
-    },
-    {
-      id: "P001247",
-      client: "Carlos Ferreira",
-      clientId: "C005",
-      type: "Celular",
-      device: "iPhone 15 Pro",
-      imei: "123456789012345",
-      value: 8500,
-      premium: 680,
-      status: "Rejeitada",
-      createdAt: "2024-01-18",
-      agent: "Maria Santos",
-      coverage: "Roubo/Furto"
-    },
-    {
-      id: "P001248",
-      client: "Pedro Oliveira",
-      clientId: "C003",
-      type: "Veículo",
-      vehicle: "Toyota Corolla 2021",
-      plate: "XYZ-9876",
-      value: 85000,
-      premium: 3400,
-      status: "Análise",
-      createdAt: "2024-01-17",
-      agent: "Ana Silva",
-      coverage: "Compreensiva"
-    },
-    {
-      id: "P001249",
-      client: "Maria Santos",
-      clientId: "C002",
-      type: "Residencial",
-      property: "Apartamento 80m²",
-      address: "Av. Principal, 456",
-      value: 280000,
-      premium: 1680,
-      status: "Aprovada",
-      createdAt: "2024-01-16",
-      agent: "Pedro Lima",
-      coverage: "Incêndio/Roubo"
-    }
-  ];
+  // const proposalss = [
+  //   {
+  //     id: "P001245",
+  //     client: "João Silva",
+  //     clientId: "C001",
+  //     type: "Veículo",
+  //     vehicle: "Honda Civic 2022",
+  //     plate: "ABC-1234",
+  //     value: 45000,
+  //     premium: 1800,
+  //     status: "Pendente",
+  //     createdAt: "2024-01-20",
+  //     agent: "Maria Santos",
+  //     coverage: "Compreensiva"
+  //   },
+  //   {
+  //     id: "P001246",
+  //     client: "Ana Costa",
+  //     clientId: "C004",
+  //     type: "Residencial",
+  //     property: "Casa 120m²",
+  //     address: "Rua das Flores, 123",
+  //     value: 350000,
+  //     premium: 2400,
+  //     status: "Aprovada",
+  //     createdAt: "2024-01-19",
+  //     agent: "Pedro Lima",
+  //     coverage: "Total"
+  //   },
+  //   {
+  //     id: "P001247",
+  //     client: "Carlos Ferreira",
+  //     clientId: "C005",
+  //     type: "Celular",
+  //     device: "iPhone 15 Pro",
+  //     imei: "123456789012345",
+  //     value: 8500,
+  //     premium: 680,
+  //     status: "Rejeitada",
+  //     createdAt: "2024-01-18",
+  //     agent: "Maria Santos",
+  //     coverage: "Roubo/Furto"
+  //   },
+  //   {
+  //     id: "P001248",
+  //     client: "Pedro Oliveira",
+  //     clientId: "C003",
+  //     type: "Veículo",
+  //     vehicle: "Toyota Corolla 2021",
+  //     plate: "XYZ-9876",
+  //     value: 85000,
+  //     premium: 3400,
+  //     status: "Análise",
+  //     createdAt: "2024-01-17",
+  //     agent: "Ana Silva",
+  //     coverage: "Compreensiva"
+  //   },
+  //   {
+  //     id: "P001249",
+  //     client: "Maria Santos",
+  //     clientId: "C002",
+  //     type: "Residencial",
+  //     property: "Apartamento 80m²",
+  //     address: "Av. Principal, 456",
+  //     value: 280000,
+  //     premium: 1680,
+  //     status: "Aprovada",
+  //     createdAt: "2024-01-16",
+  //     agent: "Pedro Lima",
+  //     coverage: "Incêndio/Roubo"
+  //   }
+  // ];
 
-  const filteredProposals = proposals.filter(proposal => {
-    const matchesSearch = proposal.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         proposal.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (proposal.plate && proposal.plate.includes(searchTerm.toUpperCase()));
-    const matchesStatus = filterStatus === "all" || proposal.status.toLowerCase() === filterStatus.toLowerCase();
-    const matchesType = filterType === "all" || proposal.type.toLowerCase() === filterType.toLowerCase();
-    return matchesSearch && matchesStatus && matchesType;
+  const query = useQuery({
+    queryKey: ['seguros-pendentes-v2'],
+    queryFn: () => getSegurosPendentes()
   });
 
+  const atualizaSeguro = useMutation({
+    mutationKey: ['efetiva-seguro'],
+    mutationFn: postEfetivaSeguro
+  });
+
+  // normalize data to array to avoid runtime errors while loading
+  const segurosPendentes = (query.data as SegurosPendentesV2Res[]) ?? [];
+
+  console.log(segurosPendentes)
+
+  // show basic loading / error UI to avoid accessing undefined
+  if (query.isLoading) return <div>Carregando propostas...</div>;
+  if (query.isError) return <div>Erro ao carregar propostas.</div>;
+
+  // const filteredProposals = segurosPendentes.filter(proposal => {
+  //   const matchesStatus = filterStatus === null || proposal.status === filterStatus;
+  //   const matchesType = filterType === null || proposal.idSeguro === filterType;
+  // });
+
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'aprovada': return 'bg-green-100 text-green-800';
-      case 'pendente': return 'bg-yellow-100 text-yellow-800';
-      case 'rejeitada': return 'bg-red-100 text-red-800';
-      case 'análise': return 'bg-blue-100 text-blue-800';
+    switch (status) {
+      case '0': return 'bg-yellow-100 text-yellow-800';
+      case '1': return 'bg-red-100 text-red-800';
+      case '2': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'veículo': return Car;
-      case 'residencial': return FileText;
-      case 'celular': return FileText;
-      default: return FileText;
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case '0': return 'Em Análise';
+      case '1': return 'Aprovada';
+      case '2': return 'Rejeitada';
     }
   };
 
-  const handleApprove = (proposalId: string) => {
+  const getTypeIcon = (type: number) => {
+    switch (type) {
+      case 1: return Car;
+      case 2: return Smartphone;
+      case 3: return House;
+      default: return undefined;
+    }
+  };
+
+  const handleApprove = (data: EfetivaSeguroDto) => {
+    atualizaSeguro.mutateAsync(
+      data,
+    ).then(() => query.refetch())
     toast({
       title: "Proposta aprovada!",
-      description: `Proposta ${proposalId} foi aprovada com sucesso.`,
+      description: `Proposta ${data.idApolice} foi aprovada com sucesso.`,
     });
   };
 
-  const handleReject = (proposalId: string) => {
+  const handleReject = (data: EfetivaSeguroDto) => {
+    atualizaSeguro.mutateAsync(
+      data,
+    ).then(() => query.refetch())
     toast({
       title: "Proposta rejeitada",
-      description: `Proposta ${proposalId} foi rejeitada.`,
+      description: `Proposta ${data.idApolice} foi rejeitada.`,
       variant: "destructive"
     });
   };
 
-  const pendingCount = proposals.filter(p => p.status === 'Pendente').length;
-  const analysisCount = proposals.filter(p => p.status === 'Análise').length;
+  const pendingCount = segurosPendentes.filter(p => p.status === '0').length;
+  const analysisCount = segurosPendentes.filter(p => p.status === '1').length;
 
   return (
     <div className="space-y-6">
@@ -146,7 +177,7 @@ export default function AdminPropostas() {
             Gerencie e analise todas as propostas de seguro
           </p>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
             {pendingCount} Pendentes
@@ -185,11 +216,11 @@ export default function AdminPropostas() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="pendente">Pendente</SelectItem>
-                  <SelectItem value="análise">Análise</SelectItem>
-                  <SelectItem value="aprovada">Aprovada</SelectItem>
-                  <SelectItem value="rejeitada">Rejeitada</SelectItem>
+                  <SelectItem value="all">null</SelectItem>
+                  <SelectItem value="pendente">0</SelectItem>
+                  <SelectItem value="análise">1</SelectItem>
+                  <SelectItem value="aprovada">2</SelectItem>
+                  <SelectItem value="rejeitada">3</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -215,7 +246,7 @@ export default function AdminPropostas() {
       {/* Tabela de Propostas */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Propostas ({filteredProposals.length})</CardTitle>
+          <CardTitle>Lista de Propostas ({segurosPendentes.length})</CardTitle>
           <CardDescription>Todas as propostas no sistema</CardDescription>
         </CardHeader>
         <CardContent>
@@ -228,76 +259,66 @@ export default function AdminPropostas() {
                 <TableHead>Valor Segurado</TableHead>
                 <TableHead>Prêmio</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Agente</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProposals.map((proposal) => {
-                const TypeIcon = getTypeIcon(proposal.type);
+              {segurosPendentes.map((proposal, index) => {
+                const TypeIcon = getTypeIcon(proposal.idSeguro);
                 return (
-                  <TableRow key={proposal.id}>
+                  // 4) key única e estável
+                  <TableRow key={`${proposal.apoliceId}-${proposal.idSeguro}-${index}`}>
+                    {/* Proposta */}
                     <TableCell>
                       <div className="space-y-1">
-                        <p className="font-medium">{proposal.id}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(proposal.createdAt).toLocaleDateString('pt-BR')}
-                        </p>
+                        <p className="font-medium">{proposal.apoliceId}</p>
                       </div>
                     </TableCell>
+
+                    {/* Cliente */}
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4" />
                         <div>
-                          <p className="font-medium">{proposal.client}</p>
-                          <p className="text-sm text-muted-foreground">{proposal.clientId}</p>
+                          <p className="font-medium">{proposal.desUsuario}</p>
+                          <p className="text-sm text-muted-foreground">{proposal.cpfCliente}</p>
                         </div>
                       </div>
                     </TableCell>
+
+                    {/* Tipo/Objeto */}
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <TypeIcon className="h-4 w-4" />
                         <div>
-                          <p className="font-medium">{proposal.type}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {proposal.vehicle || proposal.property || proposal.device}
-                          </p>
-                          {proposal.plate && (
-                            <p className="text-xs font-mono">{proposal.plate}</p>
-                          )}
+                          <p className="font-medium">{proposal.produtoNome}</p>
+                          <p className="text-sm text-muted-foreground">{proposal.produtoSegurado}</p>
+                          {proposal.placa ? <p className="text-xs font-mono">{'Placa: ' + proposal.placa}</p> : proposal.imei ? <p className="text-xs font-mono">{'Imei: ' + proposal.imei}</p> : null}
                         </div>
                       </div>
                     </TableCell>
+
+                    {/* Valor Segurado */}
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <DollarSign className="h-3 w-3" />
-                        <span className="font-medium">
-                          {proposal.value.toLocaleString('pt-BR', { 
-                            style: 'currency', 
-                            currency: 'BRL' 
-                          })}
-                        </span>
+                        <span className="font-medium">{(proposal.vlrProdutoSegurado)}</span>
                       </div>
                     </TableCell>
+
+                    {/* Prêmio */}
                     <TableCell>
                       <div className="font-medium text-green-600">
-                        {proposal.premium.toLocaleString('pt-BR', { 
-                          style: 'currency', 
-                          currency: 'BRL' 
-                        })}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {proposal.coverage}
+                        {(proposal.premioBruto)}
                       </div>
                     </TableCell>
+
+                    {/* Status */}
                     <TableCell>
                       <Badge variant="outline" className={getStatusColor(proposal.status)}>
-                        {proposal.status}
+                        {getStatusLabel(proposal.status)}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{proposal.agent}</p>
-                    </TableCell>
+
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Dialog>
@@ -308,98 +329,53 @@ export default function AdminPropostas() {
                           </DialogTrigger>
                           <DialogContent className="sm:max-w-[600px]">
                             <DialogHeader>
-                              <DialogTitle>Detalhes da Proposta {proposal.id}</DialogTitle>
+                              <DialogTitle>Detalhes da Proposta {proposal.apoliceId}</DialogTitle>
                               <DialogDescription>
                                 Informações completas da proposta
                               </DialogDescription>
                             </DialogHeader>
                             <Tabs defaultValue="details" className="w-full">
-                              <TabsList>
-                                <TabsTrigger value="details">Detalhes</TabsTrigger>
-                                <TabsTrigger value="analysis">Análise</TabsTrigger>
-                              </TabsList>
                               <TabsContent value="details" className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                   <div>
                                     <Label>Cliente</Label>
-                                    <p className="text-sm">{proposal.client} ({proposal.clientId})</p>
+                                    <p className="text-sm">{proposal.desUsuario} ({proposal.cpfCliente})</p>
                                   </div>
                                   <div>
                                     <Label>Tipo de Seguro</Label>
-                                    <p className="text-sm">{proposal.type}</p>
+                                    <p className="text-sm">{proposal.produtoNome}</p>
                                   </div>
                                   <div>
                                     <Label>Valor Segurado</Label>
                                     <p className="text-sm">
-                                      {proposal.value.toLocaleString('pt-BR', { 
-                                        style: 'currency', 
-                                        currency: 'BRL' 
-                                      })}
+                                      {proposal.vlrProdutoSegurado}
                                     </p>
                                   </div>
                                   <div>
                                     <Label>Prêmio Anual</Label>
                                     <p className="text-sm text-green-600 font-medium">
-                                      {proposal.premium.toLocaleString('pt-BR', { 
-                                        style: 'currency', 
-                                        currency: 'BRL' 
-                                      })}
+                                      {proposal.premioBruto}
                                     </p>
-                                  </div>
-                                  <div>
-                                    <Label>Cobertura</Label>
-                                    <p className="text-sm">{proposal.coverage}</p>
-                                  </div>
-                                  <div>
-                                    <Label>Agente Responsável</Label>
-                                    <p className="text-sm">{proposal.agent}</p>
-                                  </div>
-                                </div>
-                              </TabsContent>
-                              <TabsContent value="analysis" className="space-y-4">
-                                <div className="space-y-4">
-                                  <div>
-                                    <Label>Status Atual</Label>
-                                    <Badge className={getStatusColor(proposal.status)}>
-                                      {proposal.status}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      className="flex-1"
-                                      onClick={() => handleApprove(proposal.id)}
-                                    >
-                                      <CheckCircle className="h-4 w-4 mr-2" />
-                                      Aprovar
-                                    </Button>
-                                    <Button 
-                                      variant="destructive"
-                                      className="flex-1"
-                                      onClick={() => handleReject(proposal.id)}
-                                    >
-                                      <XCircle className="h-4 w-4 mr-2" />
-                                      Rejeitar
-                                    </Button>
                                   </div>
                                 </div>
                               </TabsContent>
                             </Tabs>
                           </DialogContent>
                         </Dialog>
-                        
-                        {proposal.status === 'Pendente' && (
+
+                        {proposal.status === '0' && (
                           <>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="outline"
-                              onClick={() => handleApprove(proposal.id)}
+                              onClick={() => handleApprove({ ...proposal, idApolice: proposal.apoliceId, status: 1 })}
                             >
                               <CheckCircle className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="outline"
-                              onClick={() => handleReject(proposal.id)}
+                              onClick={() => handleReject({ ...proposal, idApolice: proposal.apoliceId, status: 2 })}
                             >
                               <XCircle className="h-4 w-4" />
                             </Button>

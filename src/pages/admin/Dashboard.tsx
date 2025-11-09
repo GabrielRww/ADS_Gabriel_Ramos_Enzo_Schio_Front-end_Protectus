@@ -27,13 +27,6 @@ export default function AdminDashboard() {
       change: "+5.1%",
       icon: MapPin,
       color: "text-purple-600"
-    },
-    {
-      title: "Incidentes Hoje",
-      value: "12",
-      change: "-23.5%",
-      icon: AlertTriangle,
-      color: "text-red-600"
     }
   ];
 
@@ -103,7 +96,7 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard Administrativo</h1>
           <p className="text-muted-foreground">
-            Visão geral das operações da Protectus Seguros
+            Visão geral das operações da Protectus Seguros 
           </p>
         </div>
         
@@ -131,7 +124,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Métricas */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 animate-fade-in" style={{ animationDelay: '0.1s' }}>
         {metrics.map((metric, index) => {
           const Icon = metric.icon;
           return (
@@ -146,8 +139,6 @@ export default function AdminDashboard() {
               <CardContent>
                 <div className="text-2xl font-bold">{metric.value}</div>
                 <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  <TrendingUp className="h-3 w-3" />
-                  <span>{metric.change} em relação ao mês anterior</span>
                 </div>
               </CardContent>
             </Card>
@@ -216,54 +207,6 @@ export default function AdminDashboard() {
                 </Button>
               </div>
             ))}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Estatísticas Financeiras */}
-      <div className="grid gap-6 md:grid-cols-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-        <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Receita Mensal
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ 284.750</div>
-            <p className="text-xs text-muted-foreground">
-              +15.2% em relação ao mês anterior
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Sinistros Pagos
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ 42.350</div>
-            <p className="text-xs text-muted-foreground">
-              -8.1% em relação ao mês anterior
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Margem de Lucro
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">85.1%</div>
-            <p className="text-xs text-muted-foreground">
-              +2.4% em relação ao mês anterior
-            </p>
           </CardContent>
         </Card>
       </div>

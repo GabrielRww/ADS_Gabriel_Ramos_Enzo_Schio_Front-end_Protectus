@@ -141,7 +141,7 @@ export function useSimulacaoLogic(
     if (!value || value === 'A calcular') return 'A calcular';
 
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
-    console.log(numValue)
+
     if (isNaN(numValue)) return 'A calcular';
 
     return numValue.toLocaleString('pt-BR', {
@@ -180,7 +180,7 @@ export function useSimulacaoLogic(
   // ======== HANDLERS ========
 
   const handleInputChange = (field: string, value: string) => {
-    console.log('[Input] Change:', field, '=', value);
+
 
     try {
       if (window.event) {
@@ -234,9 +234,9 @@ export function useSimulacaoLogic(
 
     setContractingLoading(true);
     try {
-      console.log('[Contrato] Iniciando processo de contratação');
-      console.log('[Contrato] Tipo de seguro:', tipoSeguro);
-      console.log('[Contrato] originalData:', simulationResult.originalData);
+
+
+
 
       let result;
 
@@ -245,7 +245,7 @@ export function useSimulacaoLogic(
           placa: simulationResult.originalData.placa,
           status
         };
-        console.log('[Contrato] Atualizando status do veículo:', statusData);
+
         result = await updateSeguroVeiculoStatus(statusData);
 
       } else if (tipoSeguro === 'celular') {
@@ -253,7 +253,7 @@ export function useSimulacaoLogic(
           imei: simulationResult.originalData.imei,
           status
         };
-        console.log('[Contrato] Atualizando status do celular:', statusData);
+
         result = await updateSeguroCelularStatus(statusData);
 
       } else if (tipoSeguro === 'residencial') {
@@ -261,7 +261,7 @@ export function useSimulacaoLogic(
           cib: String(simulationResult.originalData.cib),
           status
         };
-        console.log('[Contrato] Atualizando status do residencial:', statusData);
+
         result = await updateSeguroImovelStatus(statusData);
 
       } else {
@@ -369,11 +369,11 @@ export function useSimulacaoLogic(
           simulationId: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         };
 
-        console.log('[Veículo] Dados da simulação:', simulationData);
+
         const result = await createSeguroVeiculo(simulationData);
 
         if (result) {
-          console.log('[Veículo] Resultado da API:', result);
+
           setSimulationResult({
             ...result,
             originalData: simulationData as FormData
@@ -404,11 +404,11 @@ export function useSimulacaoLogic(
           status: 0,
         };
 
-        console.log('[Celular] Dados da simulação:', simulationData);
+
         const result = await createSeguroCelular(simulationData);
 
         if (result) {
-          console.log('[Celular] Resultado da API:', result);
+
           setSimulationResult({
             ...result,
             originalData: simulationData as FormData
@@ -444,21 +444,12 @@ export function useSimulacaoLogic(
           status: 0,
         };
 
-        console.log('[Residencial] Dados da simulação antes do envio:', JSON.stringify(simulationData, null, 2));
-        console.log('[Residencial] Tamanhos dos campos:');
-        // console.log('- cib:', simulationData.cib.length);
-        // console.log('- tipoImovel:', simulationData.tipoImovel.length);
-        // console.log('- endereco:', simulationData.endereco.length);
-        // console.log('- numero:', simulationData.numero.length);
-        // console.log('- bairro:', simulationData.bairro.length);
-        // console.log('- cidade:', simulationData.cidade.length);
-        // console.log('- estado:', simulationData.estado.length);
 
         try {
           const result = await createSeguroImovel(simulationData);
 
           if (result) {
-            console.log('[Residencial] Resultado da API:', result);
+
             setSimulationResult({
               ...result,
               originalData: simulationData as FormData
@@ -746,7 +737,7 @@ export function useSimulacaoLogic(
           const modeloNome = modelos.find(m => String(m.id) === String(modelo))?.nome || String(modelo);
           const anoNumero = Number(ano);
 
-          console.log('[FIPE] Buscando valor para:', { marcaNome, modeloNome, anoNumero });
+
 
           const resp = await getVeiculo({ marca: marcaNome, modelo: modeloNome, ano: anoNumero });
 
@@ -763,7 +754,7 @@ export function useSimulacaoLogic(
               description: `${marcaNome} ${modeloNome} ${ano}: R$ ${valorFormatado}`,
             });
           } else {
-            console.log('[FIPE] Veículo não encontrado na base');
+
             setFormData(prev => ({
               ...prev,
               valorVeiculo: '',
@@ -808,8 +799,8 @@ export function useSimulacaoLogic(
 
           if (resp && resp.valor) {
             const valorFormatado = (resp.valor);
-            console.log(valorFormatado)
-            console.log(resp.valor)
+
+
             setFormData(prev => ({
               ...prev,
               valorCelular: valorFormatado,
@@ -817,7 +808,7 @@ export function useSimulacaoLogic(
             }));
 
           } else {
-            console.log('[FIPE] Veículo não encontrado na base');
+
             setFormData(prev => ({
               ...prev,
               valorCelular: '',

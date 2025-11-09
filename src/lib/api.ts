@@ -290,9 +290,9 @@ class ApiService {
       address: userData.address, // Sempre pega do formulário pois backend não tem
     };
 
-    console.log('API Register: Resposta do backend', created);
-    console.log('API Register: User construído', user);
-    console.log('API Register: userData original', { telefone: userData.telefone, cpf: userData.cpf, cep: userData.cep, address: userData.address });
+
+
+
 
     const token = created.access_token || created.token; // se existir
     return { success: true, data: { user, token } };
@@ -573,7 +573,7 @@ class ApiService {
     // Primeiro, tentar criar/verificar cliente se temos CPF
     if (simulationData.cpfCliente) {
       try {
-        console.log('[INFO] Verificando cliente CPF:', simulationData.cpfCliente);
+
 
         // Primeiro verifica se o cliente já existe
         const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
@@ -581,9 +581,9 @@ class ApiService {
         });
 
         if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
-          console.log('[OK] Cliente já existe, continuando com simulação');
+
         } else {
-          console.log('[INFO] Cliente não encontrado, criando novo...');
+
           const clientData = {
             cpf: simulationData.cpfCliente,
             nome: 'Cliente Simulação',
@@ -598,11 +598,9 @@ class ApiService {
             method: 'POST',
             body: JSON.stringify(clientData),
           });
-          console.log('[OK] Cliente criado com sucesso');
+
         }
       } catch (clientError) {
-        console.log('[AVISO] Erro ao verificar/criar cliente (continuando):', clientError);
-        // Não é um erro crítico, continua com a simulação
       }
     }
 
@@ -705,16 +703,16 @@ class ApiService {
     // Primeiro, verificar/criar cliente se temos CPF
     if (simulationData.cpfCliente) {
       try {
-        console.log('[INFO] Verificando cliente CPF:', simulationData.cpfCliente);
+
 
         const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
           method: 'GET',
         });
 
         if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
-          console.log('[OK] Cliente já existe, continuando com simulação');
+
         } else {
-          console.log('[INFO] Cliente não encontrado, criando novo...');
+
           const clientData = {
             cpf: simulationData.cpfCliente,
             nome: 'Cliente Simulação',
@@ -729,10 +727,9 @@ class ApiService {
             method: 'POST',
             body: JSON.stringify(clientData),
           });
-          console.log('[OK] Cliente criado com sucesso');
+
         }
       } catch (clientError) {
-        console.log('[AVISO] Erro ao verificar/criar cliente (continuando):', clientError);
       }
     }
 
@@ -747,16 +744,16 @@ class ApiService {
     // Primeiro, verificar/criar cliente se temos CPF
     if (simulationData.cpfCliente) {
       try {
-        console.log('[INFO] Verificando cliente CPF:', simulationData.cpfCliente);
+
 
         const existingClient = await this.request<any>(`${apiConfig.usersClientePath}?cpf=${simulationData.cpfCliente}`, {
           method: 'GET',
         });
 
         if (existingClient.success && existingClient.data && existingClient.data.length > 0) {
-          console.log('[OK] Cliente já existe, continuando com simulação');
+
         } else {
-          console.log('[INFO] Cliente não encontrado, criando novo...');
+
           const clientData = {
             cpf: simulationData.cpfCliente,
             nome: 'Cliente Simulação',
@@ -771,10 +768,9 @@ class ApiService {
             method: 'POST',
             body: JSON.stringify(clientData),
           });
-          console.log('[OK] Cliente criado com sucesso');
+
         }
       } catch (clientError) {
-        console.log('[AVISO] Erro ao verificar/criar cliente (continuando):', clientError);
       }
     }
 
@@ -786,7 +782,7 @@ class ApiService {
 
   // Atualizar status do seguro de veículo (contratação)
   async updateVehicleInsuranceStatus(statusData: { placa: string; status: number }): Promise<ApiResponse<any>> {
-    console.log('[Status] Atualizando status do seguro de veículo:', statusData);
+
     return this.request<any>(`${apiConfig.seguroVeiculoPath}/status`, {
       method: 'PATCH',
       body: JSON.stringify(statusData),
@@ -795,7 +791,7 @@ class ApiService {
 
   // Atualizar status do seguro de celular (contratação)
   async updateCelltelefoneInsuranceStatus(statusData: { imei: string; status: number }): Promise<ApiResponse<any>> {
-    console.log('[Status] Atualizando status do seguro de celular:', statusData);
+
     return this.request<any>(`${apiConfig.seguroCelularPath}/status`, {
       method: 'PATCH',
       body: JSON.stringify(statusData),
@@ -804,7 +800,7 @@ class ApiService {
 
   // Atualizar status do seguro residencial (contratação)
   async updateResidentialInsuranceStatus(statusData: { cib: string; status: number }): Promise<ApiResponse<any>> {
-    console.log('[Status] Atualizando status do seguro residencial:', statusData);
+
     return this.request<any>(`${apiConfig.seguroResidencialPath}/status`, {
       method: 'PATCH',
       body: JSON.stringify(statusData),
@@ -813,7 +809,7 @@ class ApiService {
 
   // Buscar valor FIPE real
   async getValorFipe(params: { marca: string; modelo: string; ano: string }): Promise<ApiResponse<any>> {
-    console.log('[FIPE] Buscando valor FIPE:', params);
+
 
     try {
       // Primeiro tenta buscar do backend (endpoint correto conforme backend)
@@ -828,20 +824,20 @@ class ApiService {
 
       for (const endpoint of endpoints) {
         try {
-          console.log('[API] Tentando endpoint do backend:', endpoint);
+
 
           const backendResponse = await this.request<any>(endpoint, {
             method: 'GET',
           });
 
-          console.log(' Resposta do backend:', backendResponse);
+
 
           if (backendResponse.success && backendResponse.data) {
             // O backend retorna um objeto CatalogoVeiculosEntity com a propriedade "valor"
             const valorFipe = backendResponse.data.valor;
 
             if (valorFipe) {
-              console.log(' Valor FIPE encontrado no backend:', valorFipe);
+
               return {
                 success: true,
                 data: {
@@ -856,22 +852,16 @@ class ApiService {
             }
           }
         } catch (endpointError: any) {
-          console.log(`[ERRO] Erro no endpoint ${endpoint}:`, {
-            status: endpointError?.response?.status || 'unknown',
-            statusText: endpointError?.response?.statusText || 'unknown',
-            message: endpointError?.message || 'unknown',
-            url: endpointError?.config?.url || endpoint,
-            data: endpointError?.response?.data || null
-          });
+
           continue; // Tenta o próximo endpoint
         }
       }
 
       // Se não teve sucesso, loga o motivo
-      console.log('[AVISO] Nenhum endpoint do backend retornou valor FIPE válido, tentando API pública...');
+
     } catch (error) {
-      console.log('[ERRO] Erro geral ao acessar backend FIPE:', error);
-      console.log('[RETRY] Tentando API pública da FIPE...');
+
+
     }
 
     try {

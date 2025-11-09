@@ -41,32 +41,27 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (email: string, password: string, roleHint?: 'cliente' | 'funcionario') => {
         set({ isLoading: true, error: null });
-        
+
         try {
           const response = await apiService.login({ email, password, roleHint });
-          
+
           if (response.success && response.data) {
             const { user, token } = response.data;
             if (token) apiService.setToken(token);
-            
+
             // Preserva dados do usuário anterior quando o backend não os retorna
             let previous: any = {};
-            try { 
-              const prevStr = localStorage.getItem('protectus-user'); 
+            try {
+              const prevStr = localStorage.getItem('protectus-user');
               if (prevStr) {
                 previous = JSON.parse(prevStr);
-                console.log('Login: Dados anteriores encontrados', {
-                  prevEmail: previous?.email,
-                  prevtelefone: previous?.telefone,
-                  prevCpf: previous?.cpf,
-                  prevAddress: previous?.address
-                });
+
               }
-            } catch {}
-            
+            } catch { }
+
             // Só mescla dados anteriores se for o MESMO usuário (mesmo email)
             const shouldMerge = previous?.email && previous.email === user.email;
-            
+
             let merged = {
               ...user,
               telefone: user.telefone || (shouldMerge ? previous?.telefone : undefined),
@@ -76,13 +71,9 @@ export const useAuthStore = create<AuthState>()(
               address: user.address || (shouldMerge ? previous?.address : undefined),
               addressNumber: user.addressNumber || (shouldMerge ? previous?.addressNumber : undefined),
             } as User;
-            
-            console.log('Login: Usuário mesclado', {
-              userFromBackend: { id: user.id, nome: user.nome, email: user.email, telefone: user.telefone, cpf: user.cpf },
-              merged: { id: merged.id, nome: merged.nome, email: merged.email, telefone: merged.telefone, cpf: merged.cpf, address: merged.address },
-              shouldMerge
-            });
-            
+
+
+
             // Opcionalmente hidrata dados do perfil via API se habilitado
             try {
               const env: any = (import.meta as any).env || {};
@@ -91,18 +82,18 @@ export const useAuthStore = create<AuthState>()(
                 const prof = await apiService.fetchClienteProfile({ id: user.id, email: user.email });
                 if (prof.success && prof.data) {
                   merged = { ...merged, ...prof.data } as User;
-                  console.log('Login: Perfil enriquecido via API', prof.data);
+
                 }
               }
             } catch (e) {
-              console.log('Login: Erro ao buscar perfil via API', e);
+
             }
-            
+
             localStorage.setItem('protectus-user', JSON.stringify(merged));
             if (token) localStorage.setItem('protectus-token', token);
-            set({ 
-              user: merged, 
-              isAuthenticated: true, 
+            set({
+              user: merged,
+              isAuthenticated: true,
               isLoading: false,
               error: null,
               errors: []
@@ -110,19 +101,19 @@ export const useAuthStore = create<AuthState>()(
             return true;
           } else {
             const errorInfo = parseApiError(response.error);
-            set({ 
+            set({
               error: response.error || 'Erro no login',
               errors: errorInfo,
-              isLoading: false 
+              isLoading: false
             });
             return false;
           }
         } catch (error) {
           const errorInfo = parseApiError('Erro de conexão com o servidor');
-          set({ 
+          set({
             error: 'Erro de conexão com o servidor',
             errors: errorInfo,
-            isLoading: false 
+            isLoading: false
           });
           return false;
         }
@@ -133,9 +124,9 @@ export const useAuthStore = create<AuthState>()(
         apiService.clearToken();
         // NÃO remove protectus-user para preservar dados entre sessões
         // try { localStorage.removeItem('protectus-user'); } catch {}
-        set({ 
-          user: null, 
-          isAuthenticated: false, 
+        set({
+          user: null,
+          isAuthenticated: false,
           isLoading: false,
           error: null,
           errors: []
@@ -144,13 +135,13 @@ export const useAuthStore = create<AuthState>()(
 
       register: async (userData: RegisterData) => {
         set({ isLoading: true, error: null, errors: [] });
-        
+
         try {
           const response = await apiService.register(userData);
-          
+
           if (response.success && response.data) {
             const { user, token } = response.data;
-            
+
             // Enriquece o user com os dados do formulário que podem não ter vindo do backend
             const enrichedUser = {
               ...user,
@@ -159,22 +150,18 @@ export const useAuthStore = create<AuthState>()(
               cep: user.cep || userData.cep,
               address: user.address || userData.address,
             };
-            
-            console.log('Register: Usuário enriquecido', {
-              fromBackend: { telefone: user.telefone, cpf: user.cpf },
-              fromForm: { telefone: userData.telefone, cpf: userData.cpf, address: userData.address },
-              enriched: { telefone: enrichedUser.telefone, cpf: enrichedUser.cpf, address: enrichedUser.address }
-            });
-            
+
+
+
             // Se o backend NÃO retornar token no cadastro, faz login automático
             if (!token || !String(token).trim()) {
               // Salva os dados enriquecidos ANTES do login para garantir persistência
-              console.log('Register: Salvando dados antes do auto-login', enrichedUser);
-              try { localStorage.setItem('protectus-user', JSON.stringify(enrichedUser)); } catch {}
-              
+
+              try { localStorage.setItem('protectus-user', JSON.stringify(enrichedUser)); } catch { }
+
               // Reutiliza o fluxo de login da store para garantir hidratação de perfil e persistências
               const ok = await get().login(userData.email, userData.password, 'cliente');
-              
+
               // CRÍTICO: Força a re-salvamento dos dados após login, pois o login pode ter sobrescrito
               try {
                 const currentUser = get().user;
@@ -186,27 +173,27 @@ export const useAuthStore = create<AuthState>()(
                     cep: currentUser.cep || enrichedUser.cep || userData.cep,
                     address: currentUser.address || enrichedUser.address || userData.address,
                   };
-                  console.log('Register: Re-salvando após auto-login', mergedAfterLogin);
+
                   localStorage.setItem('protectus-user', JSON.stringify(mergedAfterLogin));
                   set({ user: mergedAfterLogin });
                 }
               } catch (e) {
                 console.error('Register: Erro ao re-salvar após login', e);
               }
-              
+
               set({ isLoading: false });
               return ok;
             }
 
             // Se recebeu token, mantém o comportamento atual
             apiService.setToken(token);
-            try { 
+            try {
               localStorage.setItem('protectus-user', JSON.stringify(enrichedUser));
               if (token) localStorage.setItem('protectus-token', token);
-            } catch {}
-            set({ 
-              user: enrichedUser, 
-              isAuthenticated: true, 
+            } catch { }
+            set({
+              user: enrichedUser,
+              isAuthenticated: true,
               isLoading: false,
               error: null,
               errors: []
@@ -214,19 +201,19 @@ export const useAuthStore = create<AuthState>()(
             return true;
           } else {
             const errorInfo = parseApiError(response.error);
-            set({ 
+            set({
               error: response.error || 'Erro no cadastro',
               errors: errorInfo,
-              isLoading: false 
+              isLoading: false
             });
             return false;
           }
         } catch (error) {
           const errorInfo = parseApiError('Erro de conexão com o servidor');
-          set({ 
+          set({
             error: 'Erro de conexão com o servidor',
             errors: errorInfo,
-            isLoading: false 
+            isLoading: false
           });
           return false;
         }
@@ -251,18 +238,18 @@ export const useAuthStore = create<AuthState>()(
             const prof = await apiService.fetchClienteProfile({ id: current.id, email: current.email });
             if (prof.success && prof.data) {
               current = { ...current, ...(prof.data as any) } as any;
-              try { localStorage.setItem('protectus-user', JSON.stringify(current)); } catch {}
+              try { localStorage.setItem('protectus-user', JSON.stringify(current)); } catch { }
             }
           }
-        } catch {}
+        } catch { }
         set({ isAuthenticated: !!current, user: current || null, isLoading: false });
       }
     }),
     {
       name: 'protectus-auth',
-      partialize: (state) => ({ 
-        user: state.user, 
-        isAuthenticated: state.isAuthenticated 
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated
       })
     }
   )
