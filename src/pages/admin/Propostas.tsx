@@ -20,79 +20,6 @@ export default function AdminPropostas() {
   const [filterStatus, setFilterStatus] = useState(null);
   const [filterType, setFilterType] = useState(null);
 
-  // const proposalss = [
-  //   {
-  //     id: "P001245",
-  //     client: "João Silva",
-  //     clientId: "C001",
-  //     type: "Veículo",
-  //     vehicle: "Honda Civic 2022",
-  //     plate: "ABC-1234",
-  //     value: 45000,
-  //     premium: 1800,
-  //     status: "Pendente",
-  //     createdAt: "2024-01-20",
-  //     agent: "Maria Santos",
-  //     coverage: "Compreensiva"
-  //   },
-  //   {
-  //     id: "P001246",
-  //     client: "Ana Costa",
-  //     clientId: "C004",
-  //     type: "Residencial",
-  //     property: "Casa 120m²",
-  //     address: "Rua das Flores, 123",
-  //     value: 350000,
-  //     premium: 2400,
-  //     status: "Aprovada",
-  //     createdAt: "2024-01-19",
-  //     agent: "Pedro Lima",
-  //     coverage: "Total"
-  //   },
-  //   {
-  //     id: "P001247",
-  //     client: "Carlos Ferreira",
-  //     clientId: "C005",
-  //     type: "Celular",
-  //     device: "iPhone 15 Pro",
-  //     imei: "123456789012345",
-  //     value: 8500,
-  //     premium: 680,
-  //     status: "Rejeitada",
-  //     createdAt: "2024-01-18",
-  //     agent: "Maria Santos",
-  //     coverage: "Roubo/Furto"
-  //   },
-  //   {
-  //     id: "P001248",
-  //     client: "Pedro Oliveira",
-  //     clientId: "C003",
-  //     type: "Veículo",
-  //     vehicle: "Toyota Corolla 2021",
-  //     plate: "XYZ-9876",
-  //     value: 85000,
-  //     premium: 3400,
-  //     status: "Análise",
-  //     createdAt: "2024-01-17",
-  //     agent: "Ana Silva",
-  //     coverage: "Compreensiva"
-  //   },
-  //   {
-  //     id: "P001249",
-  //     client: "Maria Santos",
-  //     clientId: "C002",
-  //     type: "Residencial",
-  //     property: "Apartamento 80m²",
-  //     address: "Av. Principal, 456",
-  //     value: 280000,
-  //     premium: 1680,
-  //     status: "Aprovada",
-  //     createdAt: "2024-01-16",
-  //     agent: "Pedro Lima",
-  //     coverage: "Incêndio/Roubo"
-  //   }
-  // ];
-
   const query = useQuery({
     queryKey: ['seguros-pendentes-v2'],
     queryFn: () => getSegurosPendentes()
@@ -103,7 +30,6 @@ export default function AdminPropostas() {
     mutationFn: postEfetivaSeguro
   });
 
-  // normalize data to array to avoid runtime errors while loading
   const segurosPendentes = (query.data as SegurosPendentesV2Res[]) ?? [];
 
   console.log(segurosPendentes)

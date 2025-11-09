@@ -54,13 +54,12 @@ const segurosInfo = {
 export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initialTipoSeguro }: SimulacaoModalProps) {
   const { toast } = useToast();
   const { isAuthenticated } = useAuthStore();
-  
+
   // Estado do tipo de seguro
   const [tipoSeguro, setTipoSeguro] = useState<'veiculo' | 'residencial' | 'celular' | ''>(initialTipoSeguro || '');
-  
+
   // Usar hook customizado com toda a lógica
   const logic = useSimulacaoLogic(tipoSeguro, open);
-  console.log(logic)
 
   // Atualizar tipo de seguro quando prop mudar
   useEffect(() => {
@@ -74,9 +73,9 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   const getStepIcon = (step: number) => {
     switch (step) {
       case 1: return <FileText className="h-4 w-4" />;
-      case 2: return tipoSeguro === 'veiculo' ? <Car className="h-4 w-4" /> : 
-                    tipoSeguro === 'residencial' ? <Home className="h-4 w-4" /> : 
-                    <Smartphone className="h-4 w-4" />;
+      case 2: return tipoSeguro === 'veiculo' ? <Car className="h-4 w-4" /> :
+        tipoSeguro === 'residencial' ? <Home className="h-4 w-4" /> :
+          <Smartphone className="h-4 w-4" />;
       case 3: return <User className="h-4 w-4" />;
       case 4: return <CheckCircle className="h-4 w-4" />;
       default: return null;
@@ -101,7 +100,6 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
 
   const handleContractSuccess = async () => {
     const success = await logic.handleAcceptContract(1);
-    console.log(success)
     if (success) {
       handleCloseModal();
     }
@@ -118,9 +116,9 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               <h3 className="text-xl font-semibold">Escolha o tipo de seguro</h3>
               <p className="text-muted-foreground">Selecione o seguro que deseja simular</p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card 
+              <Card
                 className={`cursor-pointer transition-all hover:border-primary ${tipoSeguro === 'veiculo' ? 'border-primary ring-2 ring-primary' : ''}`}
                 onClick={() => setTipoSeguro('veiculo')}
               >
@@ -130,8 +128,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   <p className="text-sm text-muted-foreground">Proteja seu veículo</p>
                 </CardContent>
               </Card>
-              
-              <Card 
+
+              <Card
                 className={`cursor-pointer transition-all hover:border-primary ${tipoSeguro === 'residencial' ? 'border-primary ring-2 ring-primary' : ''}`}
                 onClick={() => setTipoSeguro('residencial')}
               >
@@ -141,8 +139,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   <p className="text-sm text-muted-foreground">Proteja seu lar</p>
                 </CardContent>
               </Card>
-              
-              <Card 
+
+              <Card
                 className={`cursor-pointer transition-all hover:border-primary ${tipoSeguro === 'celular' ? 'border-primary ring-2 ring-primary' : ''}`}
                 onClick={() => setTipoSeguro('celular')}
               >
@@ -168,7 +166,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               <h3 className="text-2xl font-bold mb-2">{seguroInfo.title}</h3>
               <p className="text-muted-foreground">{seguroInfo.description}</p>
             </div>
-            
+
             <Card>
               <CardHeader>
                 <CardTitle>Coberturas Incluídas</CardTitle>
@@ -200,7 +198,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                 placeholder="Digite seu nome completo"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email *</Label>
               <Input
@@ -211,7 +209,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                 placeholder="seu@email.com"
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="telefone">Telefone *</Label>
@@ -222,7 +220,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   placeholder="(11) 99999-9999"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="cpf">CPF *</Label>
                 <Input
@@ -243,16 +241,16 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="marca">Marca *</Label>
-                  <Select 
-                    disabled={!isAuthenticated || logic.loadingCatalog.marcas} 
-                    value={logic.formData.marca || ''} 
+                  <Select
+                    disabled={!isAuthenticated || logic.loadingCatalog.marcas}
+                    value={logic.formData.marca || ''}
                     onValueChange={(value) => logic.handleInputChange('marca', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
-                        !isAuthenticated ? 'Faça login para carregar marcas' : 
-                        logic.loadingCatalog.marcas ? 'Carregando marcas...' : 
-                        'Selecione a marca'
+                        !isAuthenticated ? 'Faça login para carregar marcas' :
+                          logic.loadingCatalog.marcas ? 'Carregando marcas...' :
+                            'Selecione a marca'
                       } />
                     </SelectTrigger>
                     <SelectContent position="popper" sideOffset={5}>
@@ -262,20 +260,20 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="modelo">Modelo *</Label>
-                  <Select 
-                    disabled={!isAuthenticated || !logic.formData.marca || logic.loadingCatalog.modelos} 
-                    value={logic.formData.modelo || ''} 
+                  <Select
+                    disabled={!isAuthenticated || !logic.formData.marca || logic.loadingCatalog.modelos}
+                    value={logic.formData.modelo || ''}
                     onValueChange={(value) => logic.handleInputChange('modelo', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
-                        !isAuthenticated ? 'Faça login primeiro' : 
-                        !logic.formData.marca ? 'Selecione a marca primeiro' : 
-                        logic.loadingCatalog.modelos ? 'Carregando modelos...' : 
-                        'Selecione o modelo'
+                        !isAuthenticated ? 'Faça login primeiro' :
+                          !logic.formData.marca ? 'Selecione a marca primeiro' :
+                            logic.loadingCatalog.modelos ? 'Carregando modelos...' :
+                              'Selecione o modelo'
                       } />
                     </SelectTrigger>
                     <SelectContent position="popper" sideOffset={5}>
@@ -285,20 +283,20 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="ano">Ano *</Label>
-                  <Select 
-                    disabled={!isAuthenticated || !logic.formData.modelo || logic.loadingCatalog.anos || logic.anos.length === 0} 
-                    value={logic.formData.ano || ''} 
+                  <Select
+                    disabled={!isAuthenticated || !logic.formData.modelo || logic.loadingCatalog.anos || logic.anos.length === 0}
+                    value={logic.formData.ano || ''}
                     onValueChange={(value) => logic.handleInputChange('ano', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
-                        !isAuthenticated ? 'Faça login primeiro' : 
-                        !logic.formData.modelo ? 'Selecione o modelo primeiro' : 
-                        logic.loadingCatalog.anos ? 'Carregando anos...' : 
-                        logic.anos.length ? 'Ano do veículo' : 'Nenhum ano disponível'
+                        !isAuthenticated ? 'Faça login primeiro' :
+                          !logic.formData.modelo ? 'Selecione o modelo primeiro' :
+                            logic.loadingCatalog.anos ? 'Carregando anos...' :
+                              logic.anos.length ? 'Ano do veículo' : 'Nenhum ano disponível'
                       } />
                     </SelectTrigger>
                     <SelectContent position="popper" sideOffset={5}>
@@ -308,7 +306,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="placa">Placa *</Label>
                   <Input
@@ -319,7 +317,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     maxLength={8}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="valor-veiculo">Valor do Veículo (FIPE)</Label>
                   <Input
@@ -334,7 +332,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     * Valor consultado automaticamente na tabela FIPE oficial
                   </p>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="uso">Uso do veículo *</Label>
                   <Select value={String(logic.formData.uso || '')} onValueChange={(value) => logic.handleInputChange('uso', value)}>
@@ -368,7 +366,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="area">Área (m²) *</Label>
                   <Input
@@ -378,7 +376,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     placeholder="Ex: 120"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="cep-residencia">CEP *</Label>
                   <Input
@@ -388,7 +386,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     placeholder="00000-000"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="valor-imovel">Valor do Imóvel *</Label>
                   <Input
@@ -398,7 +396,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     placeholder="R$ 500.000"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="endereco">Endereço *</Label>
                   <Input
@@ -408,7 +406,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     placeholder="Rua, Avenida..."
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="numero">Número *</Label>
                   <Input
@@ -418,7 +416,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     placeholder="123"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="bairro">Bairro *</Label>
                   <Input
@@ -428,7 +426,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     placeholder="Nome do bairro"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="cidade">Cidade *</Label>
                   <Input
@@ -438,7 +436,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     placeholder="Nome da cidade"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="estado">Estado *</Label>
                   <Input
@@ -458,16 +456,16 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="marca-celular">Marca *</Label>
-                  <Select 
-                    disabled={!isAuthenticated || logic.loadingCelulares.marcas} 
-                    value={logic.formData.marcaCelular || ''} 
+                  <Select
+                    disabled={!isAuthenticated || logic.loadingCelulares.marcas}
+                    value={logic.formData.marcaCelular || ''}
                     onValueChange={(value) => logic.handleInputChange('marcaCelular', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
-                        !isAuthenticated ? 'Faça login para carregar marcas' : 
-                        logic.loadingCelulares.marcas ? 'Carregando marcas...' : 
-                        'Selecione a marca'
+                        !isAuthenticated ? 'Faça login para carregar marcas' :
+                          logic.loadingCelulares.marcas ? 'Carregando marcas...' :
+                            'Selecione a marca'
                       } />
                     </SelectTrigger>
                     <SelectContent position="popper" sideOffset={5}>
@@ -477,20 +475,20 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="modelo-celular">Modelo *</Label>
-                  <Select 
-                    disabled={!isAuthenticated || !logic.formData.marcaCelular || logic.loadingCelulares.modelos} 
-                    value={logic.formData.modeloCelular || ''} 
+                  <Select
+                    disabled={!isAuthenticated || !logic.formData.marcaCelular || logic.loadingCelulares.modelos}
+                    value={logic.formData.modeloCelular || ''}
                     onValueChange={(value) => logic.handleInputChange('modeloCelular', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
-                        !isAuthenticated ? 'Faça login primeiro' : 
-                        !logic.formData.marcaCelular ? 'Selecione a marca primeiro' : 
-                        logic.loadingCelulares.modelos ? 'Carregando modelos...' : 
-                        'Selecione o modelo'
+                        !isAuthenticated ? 'Faça login primeiro' :
+                          !logic.formData.marcaCelular ? 'Selecione a marca primeiro' :
+                            logic.loadingCelulares.modelos ? 'Carregando modelos...' :
+                              'Selecione o modelo'
                       } />
                     </SelectTrigger>
                     <SelectContent position="popper" sideOffset={5}>
@@ -500,8 +498,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     </SelectContent>
                   </Select>
                 </div>
-                
-                  <div className="space-y-2">
+
+                <div className="space-y-2">
                   <Label htmlFor="valor-celular">Valor do celular</Label>
                   <Input
                     id="valor-celular"
@@ -515,7 +513,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     * Valor estimado em pesquisa de mercado
                   </p>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="imei">IMEI *</Label>
                   <Input
@@ -526,7 +524,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     maxLength={15}
                   />
                 </div>
-                
+
 
               </div>
             </div>
@@ -543,8 +541,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
 
   return (
     <Dialog open={open} onOpenChange={handleCloseModal} modal={true}>
-      <DialogContent 
-        className="max-w-2xl max-h-[90vh] overflow-y-auto" 
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
         style={{ zIndex: 60 }}
         onPointerDownOutside={(e) => e.preventDefault()}
       >
@@ -570,13 +568,13 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                       console.log('[SimulacaoModal] simulationResult:', logic.simulationResult);
                       let valor = logic.simulationResult?.vlrSeguro;
                       console.log('[SimulacaoModal] valor bruto:', valor);
-                      
+
                       // Se o valor for muito alto (provavelmente anual), dividir por 12
                       if (valor && valor > 10000) {
                         valor = valor / 12;
                         console.log('[SimulacaoModal] valor dividido por 12 (mensal):', valor);
                       }
-                      
+
                       if (valor) {
                         return `R$ ${logic.formatCurrency(valor)}`;
                       }
@@ -591,7 +589,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               {/* Resumo dos dados */}
               <div className="space-y-4">
                 <h4 className="font-semibold">Resumo da Proposta:</h4>
-                
+
                 {tipoSeguro === 'veiculo' && logic.simulationResult.originalData && (
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
@@ -609,8 +607,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     <div>
                       <span className="text-muted-foreground">Valor FIPE:</span>
                       <p className="font-medium">
-                        {logic.formData.valorVeiculo ? 
-                          `R$ ${logic.formatCurrency(logic.formData.valorVeiculo)}` : 
+                        {logic.formData.valorVeiculo ?
+                          `R$ ${logic.formatCurrency(logic.formData.valorVeiculo)}` :
                           'Consultando...'}
                       </p>
                     </div>
@@ -655,8 +653,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     <div>
                       <span className="text-muted-foreground">Valor do Imóvel:</span>
                       <p className="font-medium">
-                        {logic.formData.valorImovel ? 
-                          `R$ ${logic.formatCurrency(logic.formData.valorImovel)}` : 
+                        {logic.formData.valorImovel ?
+                          `R$ ${logic.formatCurrency(logic.formData.valorImovel)}` :
                           'Informar valor'}
                       </p>
                     </div>
@@ -689,8 +687,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
               {/* Botões de ação */}
               <div className="flex flex-col gap-3 pt-4">
                 <div className="flex gap-4">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="flex-1"
                     onClick={logic.handleRejectContract}
                     disabled={logic.contractingLoading}
@@ -698,7 +696,7 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     <Edit className="h-4 w-4 mr-2" />
                     Editar Simulação
                   </Button>
-                  <Button 
+                  <Button
                     className="flex-1 bg-green-600 hover:bg-green-700"
                     onClick={handleContractSuccess}
                     disabled={logic.contractingLoading}
@@ -716,9 +714,9 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     )}
                   </Button>
                 </div>
-                
-                <Button 
-                  variant="ghost" 
+
+                <Button
+                  variant="ghost"
                   className="w-full text-muted-foreground hover:text-foreground"
                   onClick={() => {
                     logic.handleReset();
@@ -760,16 +758,14 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                 {Array.from({ length: logic.totalSteps }, (_, i) => (
                   <div
                     key={i}
-                    className={`flex items-center space-x-2 ${
-                      i + 1 <= logic.currentStep ? 'text-primary' : 'text-muted-foreground'
-                    }`}
+                    className={`flex items-center space-x-2 ${i + 1 <= logic.currentStep ? 'text-primary' : 'text-muted-foreground'
+                      }`}
                   >
                     <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${
-                        i + 1 <= logic.currentStep
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-muted'
-                      }`}
+                      className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${i + 1 <= logic.currentStep
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-muted'
+                        }`}
                     >
                       {i + 1 <= logic.currentStep ? (
                         getStepIcon(i + 1)
@@ -806,8 +802,8 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 ) : (
-                  <Button 
-                    onClick={logic.handleSubmit} 
+                  <Button
+                    onClick={logic.handleSubmit}
                     disabled={logic.currentLoading}
                     className="bg-primary"
                   >

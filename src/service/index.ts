@@ -1,6 +1,6 @@
 // src/service/index.ts
 import axios from "axios";
-import { EfetivaSeguroDto, SegurosPendentesV2Res } from "./interface";
+import { EfetivaSeguroDto, GetSegurosPendentesByCpfRes, PostGetSegurosPendentesDto, SegurosPendentesV2Res } from "./interface";
 
 /**
  * CONFIGURAÇÃO CENTRALIZADA DA API
@@ -243,5 +243,10 @@ export const getSegurosPendentes = async (): Promise<SegurosPendentesV2Res[]> =>
 
 export const postEfetivaSeguro = async (data: EfetivaSeguroDto): Promise<{ status: string }> => {
   const response = await api.post(`/insurances/efetiva-seguro`, data);
+  return response.data;
+};
+
+export const getSegurosByCpf = async (data: PostGetSegurosPendentesDto): Promise<GetSegurosPendentesByCpfRes> => {
+  const response = await api.post(`/insurances/seguros-pendentes-by-cpf`, data);
   return response.data;
 };

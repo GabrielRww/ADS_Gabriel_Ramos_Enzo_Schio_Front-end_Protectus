@@ -16,6 +16,9 @@ export interface SegurosPendentesV2Res {
     parcelas: number;
     vlrParcela: number;
     status: string;
+    inicioVigencia: string;
+    fimVigencia: string;
+    dtaSistema: string;
 }
 
 export class EfetivaSeguroDto {
@@ -26,4 +29,15 @@ export class EfetivaSeguroDto {
     imei?: string;
     cib?: string;
     status: number;
+}
+
+
+export interface GetSegurosPendentesByCpfRes {
+    segurosAtivos: SegurosPendentesV2Res[];
+    segurosPendentes: SegurosPendentesV2Res[];
+}
+
+
+export class PostGetSegurosPendentesDto {
+    cpfCliente: string;
 }
