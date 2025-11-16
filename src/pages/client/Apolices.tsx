@@ -5,40 +5,64 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FileText, Download, Eye, Search, Filter, Car, Home, Smartphone } from 'lucide-react';
+import { FileText, Download, Eye, Search, Filter, Car, Home, Smartphone, House } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { usePolicies, type Policy } from '@/hooks/usePolicies';
 import { apiService } from '@/lib/api';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { GetSegurosPendentesByCpfRes } from '@/service/interface';
 
 export default function Apolices() {
   const { toast } = useToast();
-  const { policies, stats, loading } = usePolicies();
   const [query, setQuery] = useState('');
   const [tipoFilter, setTipoFilter] = useState<'todos' | 'veiculo' | 'residencial' | 'celular'>('todos');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'ativo' | 'pendente' | 'cancelado'>('todos');
   const [selected, setSelected] = useState<Policy | null>(null);
+  const queryClient = useQueryClient();
+  const policies = queryClient.getQueryData(['seguros-pendentes-by-cpf']) as GetSegurosPendentesByCpfRes;
+  console.log('policies', policies)
 
-  const filtered = useMemo(() => {
-    return policies.filter((p) => {
-      const matchQuery = !query || `${p.id} ${p.tipo} ${p.objeto}`.toLowerCase().includes(query.toLowerCase());
-      const matchTipo =
-        tipoFilter === 'todos' ||
-        (tipoFilter === 'veiculo' && p.tipo === 'Veículo') ||
-        (tipoFilter === 'residencial' && p.tipo === 'Residencial') ||
-        (tipoFilter === 'celular' && p.tipo === 'Celular');
-      const matchStatus =
-        statusFilter === 'todos' ||
-        (statusFilter === 'ativo' && p.status === 'Ativo') ||
-        (statusFilter === 'pendente' && p.status === 'Pendente') ||
-        (statusFilter === 'cancelado' && p.status === 'Cancelado');
-      return matchQuery && matchTipo && matchStatus;
-    });
-  }, [policies, query, tipoFilter, statusFilter]);
+  const getTypeIcon = (type: number) => {
+    switch (type) {
+      case 1: return Car;
+      case 2: return Smartphone;
+      case 3: return House;
+      default: return undefined;
+    }
+  };
+
+
+  // const filtered = useMemo(() => {
+  //   return policies.segurosAtivos.filter((p) => {
+  //     const matchQuery = !query || `${p.apoliceId} ${p.idSeguro} ${p.objeto}`.toLowerCase().includes(query.toLowerCase());
+  //     const matchTipo =
+  //       tipoFilter === 'todos' ||
+  //       (tipoFilter === 'veiculo' && p.tipo === 'Veículo') ||
+  //       (tipoFilter === 'residencial' && p.tipo === 'Residencial') ||
+  //       (tipoFilter === 'celular' && p.tipo === 'Celular');
+  //     const matchStatus =
+  //       statusFilter === 'todos' ||
+  //       (statusFilter === 'ativo' && p.status === 'Ativo') ||
+  //       (statusFilter === 'pendente' && p.status === 'Pendente') ||
+  //       (statusFilter === 'cancelado' && p.status === 'Cancelado');
+  //     return matchQuery && matchTipo && matchStatus;
+  //   });
+  // }, [policies, query, tipoFilter, statusFilter]);
 
   const handleClearFilters = () => {
     setQuery('');
     setTipoFilter('todos');
     setStatusFilter('todos');
+  };
+
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case '0': return 'Em Análise';
+      case '1': return 'Aprovada';
+      case '2': return 'Rejeitada';
+    }
   };
 
   const tryPrintFallback = (p: Policy) => {
@@ -110,219 +134,138 @@ export default function Apolices() {
     }
   };
 
+
+  // if (isLoading) {
+  //   return <div>Carregando apólices...</div>;
+  // }
+
+  // if (isError) {
+  //   return <div>Erro ao carregar apólices.</div>;
+  // }
+
+  const segurosAtivos = policies?.segurosAtivos || [];
+  const segurosPendentes = policies?.segurosPendentes || [];
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Minhas Apólices</h1>
         <p className="text-muted-foreground">
-          Gerencie suas apólices e baixe documentos
+          Gerencie suas apólices e veja detalhes sobre seus seguros.
         </p>
       </div>
 
-      {/* Filtros */}
+      {/* Tabela de Apólices Ativas */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtros
-          </CardTitle>
+          <CardTitle>Apólices Ativas ({segurosAtivos.length})</CardTitle>
+          <CardDescription>Lista de seguros ativos</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar apólice..." className="pl-10" value={query} onChange={(e) => setQuery(e.target.value)} />
-            </div>
-            
-            <Select value={tipoFilter} onValueChange={(v: any) => setTipoFilter(v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Tipo de seguro" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="veiculo">Veículo</SelectItem>
-                <SelectItem value="residencial">Residencial</SelectItem>
-                <SelectItem value="celular">Celular</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="ativo">Ativo</SelectItem>
-                <SelectItem value="pendente">Pendente</SelectItem>
-                <SelectItem value="cancelado">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button variant="outline" className="w-full" onClick={handleClearFilters}>
-              Limpar Filtros
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <FileText className="h-8 w-8 text-primary" />
-              <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-sm text-muted-foreground">Total de Apólices</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-success-light rounded-lg flex items-center justify-center">
-                <div className="h-4 w-4 bg-success rounded-full"></div>
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.ativas}</p>
-                <p className="text-sm text-muted-foreground">Ativas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-warning-light rounded-lg flex items-center justify-center">
-                <div className="h-4 w-4 bg-warning rounded-full"></div>
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.pendentes}</p>
-                <p className="text-sm text-muted-foreground">Pendentes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-destructive-light rounded-lg flex items-center justify-center">
-                <div className="h-4 w-4 bg-destructive rounded-full"></div>
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.canceladas}</p>
-                <p className="text-sm text-muted-foreground">Canceladas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Lista de Apólices */}
-      <div className="space-y-4">
-        {filtered.map((apolice) => {
-          const IconeComponent = apolice.tipo === 'Veículo' ? Car : apolice.tipo === 'Residencial' ? Home : Smartphone;
-          return (
-            <Card key={apolice.id}>
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-primary-light rounded-lg flex items-center justify-center">
-                      <IconeComponent className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold">{apolice.tipo}</h3>
-                        <Badge className={getStatusColor(apolice.status)}>
-                          {apolice.status}
-                        </Badge>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Apólice</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Tipo/Objeto</TableHead>
+                <TableHead>Valor Segurado</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Vigência</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {segurosAtivos.map((policy) => {
+                const TypeIcon = getTypeIcon(policy.idSeguro);
+                return (
+                  <TableRow key={policy.apoliceId}>
+                    <TableCell>{policy.apoliceId}</TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{policy.desUsuario}</p>
+                        <p className="text-sm text-muted-foreground">{policy.cpfCliente}</p>
                       </div>
-                      <p className="text-muted-foreground">{apolice.objeto}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Apólice: {apolice.id} | Vigência: {apolice.vigencia}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col md:items-end space-y-2">
-                    <div className="text-right">
-                      <p className="font-semibold text-primary">{apolice.valor}</p>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setSelected(apolice)}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        Visualizar
-                      </Button>
-                      
-                      {apolice.status === 'Ativo' && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleDownload(apolice)}
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Download PDF
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Ações Rápidas */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Ações Rápidas</CardTitle>
-          <CardDescription>
-            Principais ações para suas apólices
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
-              <FileText className="h-6 w-6" />
-              <span>Solicitar 2ª Via</span>
-            </Button>
-            
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
-              <Download className="h-6 w-6" />
-              <span>Baixar Todas</span>
-            </Button>
-            
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
-              <Eye className="h-6 w-6" />
-              <span>Histórico Completo</span>
-            </Button>
-          </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <TypeIcon className="h-4 w-4" />
+                        <div>
+                          <p className="font-medium">{policy.produtoNome}</p>
+                          <p className="text-sm text-muted-foreground">{policy.produtoSegurado}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{policy.vlrProdutoSegurado ? `R$ ${policy.vlrProdutoSegurado}` : '-'}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(policy.status)}>
+                        {getStatusLabel(policy.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {policy.inicioVigencia} - {policy.fimVigencia}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      {/* Modal Visualização */}
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Detalhes da Apólice {selected?.id}</DialogTitle>
-          </DialogHeader>
-          {selected && (
-            <div className="space-y-2">
-              <div><strong>Tipo:</strong> {selected.tipo}</div>
-              <div><strong>Objeto:</strong> {selected.objeto}</div>
-              <div><strong>Status:</strong> {selected.status}</div>
-              <div><strong>Vigência:</strong> {selected.vigencia}</div>
-              <div><strong>Valor:</strong> {selected.valor}</div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Tabela de Apólices Pendentes */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Apólices Pendentes ({segurosPendentes.length})</CardTitle>
+          <CardDescription>Lista de seguros pendentes</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Apólice</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Tipo/Objeto</TableHead>
+                <TableHead>Valor Segurado</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Vigência</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {segurosPendentes.map((policy) => {
+                const TypeIcon = getTypeIcon(policy.idSeguro);
+                return (
+                  <TableRow key={policy.apoliceId}>
+                    <TableCell>{policy.apoliceId}</TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{policy.desUsuario}</p>
+                        <p className="text-sm text-muted-foreground">{policy.cpfCliente}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <TypeIcon className="h-4 w-4" />
+                        <div>
+                          <p className="font-medium">{policy.produtoNome}</p>
+                          <p className="text-sm text-muted-foreground">{policy.produtoSegurado}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{policy.vlrProdutoSegurado ? `R$ ${policy.vlrProdutoSegurado}` : '-'}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(policy.status)}>
+                        {getStatusLabel(policy.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {policy.inicioVigencia} - {policy.fimVigencia}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
