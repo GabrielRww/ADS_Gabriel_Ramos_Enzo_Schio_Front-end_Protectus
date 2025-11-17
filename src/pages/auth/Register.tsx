@@ -60,10 +60,10 @@ export default function Register() {
     setIsLoading(true);
 
     const userData: RegisterData = {
-      name,
+      nome: name,
       email,
       password,
-      phone,
+      telefone: phone,
       cpf,
       cep,
       address,

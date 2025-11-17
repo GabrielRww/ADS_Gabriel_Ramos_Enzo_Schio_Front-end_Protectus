@@ -41,3 +41,20 @@ export interface GetSegurosPendentesByCpfRes {
 export class PostGetSegurosPendentesDto {
     cpfCliente: string;
 }
+
+export interface VeiculoPosicaoReq {
+    cpfCliente?: string;
+}
+
+export interface VeiculoPosicaoRes {
+    placa: string;
+    latitude: number;
+    cpfCliente: string;
+    longitude: number;
+    marca: string;
+    modelo: string;
+    ano: number;
+    velocidade?: number;
+    direcao?: number;
+    rastreadoEm: string;
+};
