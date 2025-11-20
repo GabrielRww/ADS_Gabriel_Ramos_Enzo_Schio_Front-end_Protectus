@@ -1,28 +1,21 @@
 import { useState } from 'react';
-import { User, Mail, Phone, MapPin, Building, Calendar, Camera } from 'lucide-react';
+import { User, Building, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/authStore';
 
 export function AdminProfile() {
   const { user } = useAuthStore();
   const { toast } = useToast();
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    name: user?.nome || '',
     email: user?.email || '',
-    phone: '(11) 99999-9999',
-    cpf: '123.456.789-00',
-    department: 'Seguros Corporativos',
-    position: 'Analista Senior',
-    address: 'Rua das Flores, 123, São Paulo - SP',
-    admissionDate: '2020-01-15'
   });
 
   const handleSave = () => {
@@ -35,14 +28,8 @@ export function AdminProfile() {
 
   const handleCancel = () => {
     setFormData({
-      name: user?.name || '',
+      name: user?.nome || '',
       email: user?.email || '',
-      phone: '(11) 99999-9999',
-      cpf: '123.456.789-00',
-      department: 'Seguros Corporativos',
-      position: 'Analista Senior',
-      address: 'Rua das Flores, 123, São Paulo - SP',
-      admissionDate: '2020-01-15'
     });
     setIsEditing(false);
   };
@@ -69,12 +56,9 @@ export function AdminProfile() {
             <Avatar className="h-32 w-32">
               <AvatarImage src="/placeholder-avatar.png" />
               <AvatarFallback className="text-2xl bg-gradient-primary text-primary-foreground">
-                {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase()}
+                {user?.nome?.split(' ').map(n => n[0]).join('').toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <Button variant="outline" size="sm">
-              Alterar Foto
-            </Button>
           </CardContent>
         </Card>
 
@@ -90,7 +74,7 @@ export function AdminProfile() {
                 Suas informações básicas e de contato
               </CardDescription>
             </div>
-            <Button 
+            <Button
               onClick={() => setIsEditing(!isEditing)}
               variant={isEditing ? "outline" : "default"}
             >
@@ -108,7 +92,7 @@ export function AdminProfile() {
                   disabled={!isEditing}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
                 <Input
@@ -120,35 +104,6 @@ export function AdminProfile() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cpf">CPF</Label>
-                <Input
-                  id="cpf"
-                  value={formData.cpf}
-                  onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="address">Endereço</Label>
-              <Input
-                id="address"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                disabled={!isEditing}
-              />
             </div>
 
             {isEditing && (
@@ -171,47 +126,15 @@ export function AdminProfile() {
               <Building className="h-5 w-5" />
               Informações Profissionais
             </CardTitle>
-            <CardDescription>
-              Dados relacionados ao seu trabalho na Protectus Seguros
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Departamento</Label>
-                <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                  <span>{formData.department}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Cargo</Label>
-                <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span>{formData.position}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Data de Admissão</Label>
-                <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{new Date(formData.admissionDate).toLocaleDateString('pt-BR')}</span>
-                </div>
-              </div>
-            </div>
-
-            <Separator className="my-6" />
 
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Permissões do Sistema</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <h4 className="font-medium">Módulos Autorizados:</h4>
                   <ul className="text-sm text-muted-foreground space-y-1">
                     <li>• Dashboard Administrativo</li>
-                    <li>• Gestão de Clientes</li>
                     <li>• Análise de Propostas</li>
                     <li>• Controle de Rastreadores</li>
                   </ul>

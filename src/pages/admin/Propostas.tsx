@@ -7,16 +7,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Eye, CheckCircle, XCircle, Clock, DollarSign, House, User, Car, Smartphone } from "lucide-react";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Search, Eye, CheckCircle, XCircle, House, User, Car, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getSegurosPendentes, postEfetivaSeguro } from "@/service";
 import { EfetivaSeguroDto, SegurosPendentesV2Res } from "@/service/interface";
+import { formatToBrazilianReal } from "@/utils/functions";
 
 export default function AdminPropostas() {
   const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState(null);
   const [filterType, setFilterType] = useState(null);
 
@@ -32,22 +32,15 @@ export default function AdminPropostas() {
 
   const segurosPendentes = (query.data as SegurosPendentesV2Res[]) ?? [];
 
-  console.log(segurosPendentes)
-
-  // show basic loading / error UI to avoid accessing undefined
   if (query.isLoading) return <div>Carregando propostas...</div>;
   if (query.isError) return <div>Erro ao carregar propostas.</div>;
 
-  // const filteredProposals = segurosPendentes.filter(proposal => {
-  //   const matchesStatus = filterStatus === null || proposal.status === filterStatus;
-  //   const matchesType = filterType === null || proposal.idSeguro === filterType;
-  // });
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case '0': return 'bg-yellow-100 text-yellow-800';
-      case '1': return 'bg-red-100 text-red-800';
-      case '2': return 'bg-blue-100 text-blue-800';
+      case '1': return 'bg-blue-100 text-blue-800';
+      case '2': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -98,7 +91,7 @@ export default function AdminPropostas() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestão de Propostas</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Gestão de Apólices</h1>
           <p className="text-muted-foreground">
             Gerencie e analise todas as propostas de seguro
           </p>
@@ -109,7 +102,7 @@ export default function AdminPropostas() {
             {pendingCount} Pendentes
           </Badge>
           <Badge variant="outline" className="bg-blue-100 text-blue-800">
-            {analysisCount} Em Análise
+            {analysisCount} Aprovados
           </Badge>
         </div>
       </div>
@@ -122,19 +115,6 @@ export default function AdminPropostas() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 md:flex-row md:items-end">
-            <div className="space-y-2 flex-1">
-              <Label htmlFor="search">Buscar Proposta</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Cliente, ID da proposta ou placa..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -142,11 +122,11 @@ export default function AdminPropostas() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">null</SelectItem>
-                  <SelectItem value="pendente">0</SelectItem>
-                  <SelectItem value="análise">1</SelectItem>
-                  <SelectItem value="aprovada">2</SelectItem>
-                  <SelectItem value="rejeitada">3</SelectItem>
+                  <SelectItem value="null">Todos</SelectItem>
+                  <SelectItem value="0">Pendente</SelectItem>
+                  <SelectItem value="1">Em Análise</SelectItem>
+                  <SelectItem value="2">Aprovada</SelectItem>
+                  <SelectItem value="3">Rejeitada</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -227,14 +207,14 @@ export default function AdminPropostas() {
                     {/* Valor Segurado */}
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <span className="font-medium">{(proposal.vlrProdutoSegurado)}</span>
+                        <span className="font-medium">{(formatToBrazilianReal(String(proposal.vlrProdutoSegurado || 0)))}</span>
                       </div>
                     </TableCell>
 
                     {/* Prêmio */}
                     <TableCell>
                       <div className="font-medium text-green-600">
-                        {(proposal.premioBruto)}
+                        {(formatToBrazilianReal(String(proposal.premioBruto || 0)))}
                       </div>
                     </TableCell>
 

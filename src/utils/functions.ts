@@ -1,5 +1,4 @@
 export function parseBrazilianDate(raw: string): Date | null {
-    // Aceita formatos: dd/MM/yyyy ou dd/MM/yyyy HH:mm:ss
     if (!raw || typeof raw !== 'string') return null;
     const [datePart, timePart] = raw.trim().split(' ');
     const parts = datePart.split('/');
@@ -17,3 +16,10 @@ export function parseBrazilianDate(raw: string): Date | null {
     const d = new Date(year, month, day, hours, minutes, seconds);
     return isNaN(d.getTime()) ? null : d;
 };
+
+export function formatToBrazilianReal(value: string | null | undefined): string {
+    if (value === null || value === undefined) return '';
+    const valueFormat = parseFloat(value);
+    if (isNaN(valueFormat)) throw new Error('Invalid number');
+    return valueFormat.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
