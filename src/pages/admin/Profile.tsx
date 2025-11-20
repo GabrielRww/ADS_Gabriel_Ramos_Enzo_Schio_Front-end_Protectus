@@ -74,12 +74,6 @@ export function AdminProfile() {
                 Suas informações básicas e de contato
               </CardDescription>
             </div>
-            <Button
-              onClick={() => setIsEditing(!isEditing)}
-              variant={isEditing ? "outline" : "default"}
-            >
-              {isEditing ? 'Cancelar' : 'Editar'}
-            </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

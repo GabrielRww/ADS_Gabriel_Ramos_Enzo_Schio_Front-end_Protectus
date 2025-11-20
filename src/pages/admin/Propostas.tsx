@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,11 @@ import { formatToBrazilianReal } from "@/utils/functions";
 
 export default function AdminPropostas() {
   const { toast } = useToast();
-  const [filterStatus, setFilterStatus] = useState(null);
-  const [filterType, setFilterType] = useState(null);
+  type StatusFilter = 'all' | '0' | '1' | '2';
+  type TipoFilter = 'all' | 'veiculo' | 'residencial' | 'celular';
+
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
+  const [filterType, setFilterType] = useState<TipoFilter>('all');
 
   const query = useQuery({
     queryKey: ['seguros-pendentes-v2'],
@@ -30,7 +33,17 @@ export default function AdminPropostas() {
     mutationFn: postEfetivaSeguro
   });
 
-  const segurosPendentes = (query.data as SegurosPendentesV2Res[]) ?? [];
+  const segurosPendentes = useMemo(() => (query.data as SegurosPendentesV2Res[]) ?? [], [query.data]);
+
+  const filteredSeguros = useMemo(() => {
+    return segurosPendentes.filter((p: SegurosPendentesV2Res) => {
+      const statusOk = filterStatus === 'all' || p.status === filterStatus;
+      const tipoMap: Record<number, TipoFilter> = { 1: 'veiculo', 2: 'celular', 3: 'residencial' };
+      const tipoSeguro = tipoMap[p.idSeguro] || 'all';
+      const tipoOk = filterType === 'all' || filterType === tipoSeguro;
+      return statusOk && tipoOk;
+    });
+  }, [segurosPendentes, filterStatus, filterType]);
 
   if (query.isLoading) return <div>Carregando propostas...</div>;
   if (query.isError) return <div>Erro ao carregar propostas.</div>;
@@ -84,7 +97,7 @@ export default function AdminPropostas() {
   };
 
   const pendingCount = segurosPendentes.filter(p => p.status === '0').length;
-  const analysisCount = segurosPendentes.filter(p => p.status === '1').length;
+  const approvedCount = segurosPendentes.filter(p => p.status === '1').length;
 
   return (
     <div className="space-y-6">
@@ -102,7 +115,7 @@ export default function AdminPropostas() {
             {pendingCount} Pendentes
           </Badge>
           <Badge variant="outline" className="bg-blue-100 text-blue-800">
-            {analysisCount} Aprovados
+            {approvedCount} Aprovados
           </Badge>
         </div>
       </div>
@@ -117,34 +130,33 @@ export default function AdminPropostas() {
           <div className="flex flex-col gap-4 md:flex-row md:items-end">
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as StatusFilter)}>
                 <SelectTrigger className="w-full md:w-[140px]">
-                  <SelectValue />
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="null">Todos</SelectItem>
-                  <SelectItem value="0">Pendente</SelectItem>
-                  <SelectItem value="1">Em Análise</SelectItem>
-                  <SelectItem value="2">Aprovada</SelectItem>
-                  <SelectItem value="3">Rejeitada</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="0">Em Análise</SelectItem>
+                  <SelectItem value="1">Aprovada</SelectItem>
+                  <SelectItem value="2">Rejeitada</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="type">Tipo</Label>
-              <Select value={filterType} onValueChange={setFilterType}>
+              <Select value={filterType} onValueChange={(v) => setFilterType(v as TipoFilter)}>
                 <SelectTrigger className="w-full md:w-[140px]">
-                  <SelectValue />
+                  <SelectValue placeholder="Tipo" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="veículo">Veículo</SelectItem>
+                  <SelectItem value="veiculo">Veículo</SelectItem>
                   <SelectItem value="residencial">Residencial</SelectItem>
                   <SelectItem value="celular">Celular</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline">Limpar Filtros</Button>
+            <Button variant="outline" onClick={() => { setFilterStatus('all'); setFilterType('all'); }}>Limpar Filtros</Button>
           </div>
         </CardContent>
       </Card>
@@ -169,7 +181,7 @@ export default function AdminPropostas() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {segurosPendentes.map((proposal, index) => {
+              {filteredSeguros.map((proposal, index) => {
                 const TypeIcon = getTypeIcon(proposal.idSeguro);
                 return (
                   // 4) key única e estável
@@ -207,14 +219,14 @@ export default function AdminPropostas() {
                     {/* Valor Segurado */}
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <span className="font-medium">{(formatToBrazilianReal(String(proposal.vlrProdutoSegurado || 0)))}</span>
+                        <span className="font-medium">{formatToBrazilianReal(String(proposal.vlrProdutoSegurado ?? '0'))}</span>
                       </div>
                     </TableCell>
 
                     {/* Prêmio */}
                     <TableCell>
                       <div className="font-medium text-green-600">
-                        {(formatToBrazilianReal(String(proposal.premioBruto || 0)))}
+                        {formatToBrazilianReal(String(proposal.premioBruto ?? '0'))}
                       </div>
                     </TableCell>
 
