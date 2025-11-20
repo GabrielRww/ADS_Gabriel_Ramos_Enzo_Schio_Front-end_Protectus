@@ -57,23 +57,7 @@ export default function Landing() {
     }
   ];
 
-  const testimonials = [
-    {
-      name: 'Maria Silva',
-      text: 'Excelente atendimento! Resolveram meu sinistro rapidamente.',
-      rating: 5
-    },
-    {
-      name: 'João Santos',
-      text: 'Preços justos e cobertura completa. Recomendo!',
-      rating: 5
-    },
-    {
-      name: 'Ana Costa',
-      text: 'Muito prático simular e contratar online.',
-      rating: 5
-    }
-  ];
+
 
   return (
     <div className="min-h-screen">
@@ -148,10 +132,6 @@ export default function Landing() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8 animate-slide-up">
               <div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6 animate-fade-in">
-                  <Shield className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium text-primary">Mais de 50 mil clientes protegidos</span>
-                </div>
                 <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
                   Proteção que você{' '}
                   <span className="relative inline-block">
@@ -177,23 +157,6 @@ export default function Landing() {
                   <span className="relative z-10 font-semibold">Simular Agora</span>
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
                 </Button>
-              </div>
-
-              <div className="flex items-center space-x-8 pt-12">
-                <div className="text-center group cursor-default">
-                  <div className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent group-hover:scale-110 transition-all">50k+</div>
-                  <div className="text-sm text-muted-foreground font-medium">Clientes Protegidos</div>
-                </div>
-                <div className="w-px h-12 bg-gradient-to-b from-transparent via-primary/50 to-transparent"></div>
-                <div className="text-center group cursor-default">
-                  <div className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent group-hover:scale-110 transition-all">98%</div>
-                  <div className="text-sm text-muted-foreground font-medium">Satisfação</div>
-                </div>
-                <div className="w-px h-12 bg-gradient-to-b from-transparent via-primary/50 to-transparent"></div>
-                <div className="text-center group cursor-default">
-                  <div className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent group-hover:scale-110 transition-all">24/7</div>
-                  <div className="text-sm text-muted-foreground font-medium">Suporte Ativo</div>
-                </div>
               </div>
             </div>
             
@@ -281,60 +244,6 @@ export default function Landing() {
                       </li>
                     ))}
                   </ul>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-24 bg-gradient-to-b from-muted/20 to-background relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(var(--primary-rgb),0.05),transparent_50%)]"></div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-20">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-4">
-              <Star className="h-4 w-4 text-accent fill-accent" />
-              <span className="text-sm font-semibold text-accent">Avaliações Reais</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-              O que nossos <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">clientes</span> dizem
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Milhares de clientes satisfeitos com nossos serviços de proteção
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="relative overflow-hidden hover:shadow-glow hover:-translate-y-1 transition-all duration-500 border-2 border-border/50 hover:border-accent/30 bg-gradient-to-br from-card via-card to-accent/5 backdrop-blur-sm group">
-                {/* Decorative corner */}
-                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-accent/20 to-transparent rounded-bl-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                
-                <CardContent className="p-8 relative">
-                  <div className="flex mb-6 gap-1">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <div key={i} className="relative">
-                        <Star className="h-5 w-5 fill-accent text-accent drop-shadow-glow" />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-muted-foreground mb-6 italic relative leading-relaxed text-base">
-                    <span className="text-7xl text-accent/10 absolute -top-6 -left-4 font-serif">"</span>
-                    <span className="relative z-10">{testimonial.text}</span>
-                  </p>
-                  <div className="flex items-center gap-3 pt-4 border-t border-border/50">
-                    <div className="w-12 h-12 rounded-full bg-gradient-tech flex items-center justify-center shadow-glow">
-                      <span className="text-primary-foreground font-bold text-lg">{testimonial.name.charAt(0)}</span>
-                    </div>
-                    <div>
-                      <p className="font-bold text-foreground">
-                        {testimonial.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Cliente Protectus</p>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             ))}

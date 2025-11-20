@@ -12,8 +12,9 @@ export default function ClientDashboard() {
   const { user } = useAuthStore();
 
   const query = useQuery({
-    queryKey: ['seguros-pendentes-by-cpf'],
+    queryKey: ['seguros-pendentes-by-cpf', user?.cpf],
     queryFn: () => getSegurosByCpf({ cpfCliente: user?.cpf }),
+    enabled: !!user?.cpf,
   });
 
   if (query.isLoading) return <div>Carregando propostas...</div>;

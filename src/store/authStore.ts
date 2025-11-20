@@ -66,7 +66,8 @@ export const useAuthStore = create<AuthState>()(
               ...user,
               telefone: user.telefone || (shouldMerge ? previous?.telefone : undefined),
               cpf: user.cpf || (shouldMerge ? previous?.cpf : undefined),
-              nome: user.nome || (shouldMerge ? previous?.cpf : undefined),
+              // Corrige fallback incorreto que usava previous.cpf para nome
+              nome: user.nome || (shouldMerge ? previous?.nome : undefined),
               cep: user.cep || (shouldMerge ? previous?.cep : undefined),
               address: user.address || (shouldMerge ? previous?.address : undefined),
               addressNumber: user.addressNumber || (shouldMerge ? previous?.addressNumber : undefined),

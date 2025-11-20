@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight, User, FileText, Car, Home, Smartphone, Check
 import { useSimulacaoLogic } from '@/hooks/useSimulacaoLogic';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface SimulacaoModalProps {
   open: boolean;
@@ -54,6 +55,7 @@ const segurosInfo = {
 export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initialTipoSeguro }: SimulacaoModalProps) {
   const { toast } = useToast();
   const { isAuthenticated } = useAuthStore();
+  const queryClient = useQueryClient();
 
   // Estado do tipo de seguro
   const [tipoSeguro, setTipoSeguro] = useState<'veiculo' | 'residencial' | 'celular' | ''>(initialTipoSeguro || '');
@@ -101,6 +103,12 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
   const handleContractSuccess = async () => {
     const success = await logic.handleAcceptContract(1);
     if (success) {
+      // Invalida propostas/apólices para recarregar dados do cliente atual
+      queryClient.invalidateQueries({ queryKey: ['seguros-pendentes-by-cpf'] });
+      toast({
+        title: 'Proposta enviada',
+        description: 'Atualizando suas propostas e apólices...',
+      });
       handleCloseModal();
     }
   };

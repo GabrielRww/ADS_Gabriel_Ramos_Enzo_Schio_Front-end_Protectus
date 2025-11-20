@@ -12,6 +12,8 @@ import { apiService } from '@/lib/api';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { GetSegurosPendentesByCpfRes } from '@/service/interface';
+import { useAuthStore } from '@/store/authStore';
+import { getSegurosByCpf } from '@/service';
 
 export default function Apolices() {
   const { toast } = useToast();
@@ -20,8 +22,15 @@ export default function Apolices() {
   const [statusFilter, setStatusFilter] = useState<'todos' | 'ativo' | 'pendente' | 'cancelado'>('todos');
   const [selected, setSelected] = useState<Policy | null>(null);
   const queryClient = useQueryClient();
-  const policies = queryClient.getQueryData(['seguros-pendentes-by-cpf']) as GetSegurosPendentesByCpfRes;
-  console.log('policies', policies)
+  const { user } = useAuthStore();
+  const { data: policies, isLoading, isError } = useQuery<GetSegurosPendentesByCpfRes>({
+    queryKey: ['seguros-pendentes-by-cpf', user?.cpf],
+    queryFn: () => getSegurosByCpf({ cpfCliente: user?.cpf }),
+    enabled: !!user?.cpf,
+  });
+
+  if (isLoading) return <div>Carregando apólices...</div>;
+  if (isError || !policies) return <div>Erro ao carregar apólices.</div>;
 
   const getTypeIcon = (type: number) => {
     switch (type) {
