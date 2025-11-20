@@ -48,7 +48,7 @@ export function Header() {
 
   const employeeNavigation: NavigationItem[] = [
     { name: 'Dashboard', href: '/admin' },
-    { name: 'Funcionários', href: '/admin/clientes' },
+    // { name: 'Funcionários', href: '/admin/clientes' },
     { name: 'Propostas', href: '/admin/propostas' },
     { name: 'Rastreadores', href: '/admin/rastreadores' }
   ];
@@ -114,12 +114,12 @@ export function Header() {
                   <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                     <User className="h-4 w-4 text-primary" />
                   </div>
-                  <span className="hidden sm:block text-sm font-medium">{user?.name}</span>
+                  <span className="hidden sm:block text-sm font-medium">{user?.nome}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <div className="px-2 py-1.5 text-sm">
-                  <div className="font-medium">{user?.name}</div>
+                  <div className="font-medium">{user?.nome}</div>
                   <div className="text-muted-foreground">{user?.email}</div>
                   <Badge variant="outline" className="mt-1 text-xs">
                     {user?.role === 'gerente' ? 'Gerente' : user?.role === 'funcionario' ? 'Funcionário' : 'Cliente'}

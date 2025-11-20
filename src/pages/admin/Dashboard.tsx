@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,11 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, FileText, MapPin, Clock, Activity } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
-import { getDashboardAdmin } from '@/service';
-import type { GetDashboardAdminRes } from '@/service/interface';
+import { getDashboardAdmin, getSegurosPendentes } from '@/service';
+import type { GetDashboardAdminRes, SegurosPendentesV2Res } from '@/service/interface';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { parseBrazilianDate } from '@/utils/functions';
 
 export default function AdminDashboard() {
-  const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'quarter'>('today');
+  const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'quarter'>('month');
 
   const diasAtraso = useMemo(() => {
     switch (period) {
@@ -52,13 +55,38 @@ export default function AdminDashboard() {
     ];
   }, [data]);
 
-  const recentActivities = [
-    { id: 1, type: "Novo Cliente", description: "João Silva cadastrado", time: "2 min atrás", status: "success" },
-    { id: 2, type: "Apólice Aprovada", description: "Apólice #A001234 aprovada", time: "15 min atrás", status: "success" },
-    { id: 3, type: "Incidente", description: "Veículo ABC-1234 - Furto reportado", time: "1h atrás", status: "warning" },
-    { id: 4, type: "Pagamento", description: "Pagamento recebido - R$ 450,00", time: "2h atrás", status: "success" },
-    { id: 5, type: "Rastreador", description: "Dispositivo RT001 offline", time: "3h atrás", status: "error" }
-  ];
+  const {
+    data: pendentesData,
+    isLoading: loadingPendentes,
+    isError: errorPendentes,
+  } = useQuery<SegurosPendentesV2Res[]>({
+    queryKey: ['seguros-pendentes-admin'],
+    queryFn: () => getSegurosPendentes(),
+  });
+
+  const safeFormatRelative = useCallback((raw?: string): string => {
+    if (!raw) return '—';
+    const dateObj = parseBrazilianDate(raw) || (raw.includes('T') ? new Date(raw) : null);
+    if (!dateObj || isNaN(dateObj.getTime())) return '—';
+    return formatDistanceToNow(dateObj, { addSuffix: true, locale: ptBR });
+  }, []);
+
+  const recentActivities = useMemo(() => {
+    if (!pendentesData) return [] as Array<{ id: number; type: string; description: string; time: string; status: string }>; // no any
+    return pendentesData
+      .filter(p => p.status === '0')
+      .slice(0, 5)
+      .map(p => {
+        const timeRel = safeFormatRelative(p.dtaSistema || p.inicioVigencia);
+        return {
+          id: p.apoliceId,
+          type: 'Proposta Pendente',
+          description: `${p.produtoNome} • ${p.desUsuario}`,
+          time: timeRel,
+          status: 'warning',
+        };
+      });
+  }, [pendentesData, safeFormatRelative]);
 
   const pendingTasks = [
     { id: 1, task: "Revisar proposta #P001245", priority: "Alta", deadline: "Hoje" },
@@ -136,16 +164,9 @@ export default function AdminDashboard() {
               </SelectContent>
             </Select>
 
-            <Input
-              placeholder="Buscar por cliente, placa..."
-              className="w-full md:w-[250px]"
-            />
-
-            <Button>Buscar</Button>
           </div>
         </div>
 
-        {/* Métricas */}
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 animate-fade-in" style={{ animationDelay: '0.1s' }}>
           {isLoading && (
             <>
@@ -187,40 +208,49 @@ export default function AdminDashboard() {
           })}
         </div>
 
-          <div className="grid gap-6 lg:grid-cols-1 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            {/* Atividades Recentes */}
-            <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Atividades Recentes
-                </CardTitle>
-                <CardDescription>
-                  Últimas movimentações no sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start justify-between space-x-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">{activity.type}</p>
-                      <p className="text-sm text-muted-foreground">{activity.description}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">{activity.time}</p>
-                      <div className={`text-xs ${getStatusColor(activity.status)}`}>
-                        <Clock className="inline h-3 w-3 mr-1" />
-                        {activity.status}
-                      </div>
+        <div className="grid gap-6 lg:grid-cols-1 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          {/* Atividades Recentes */}
+          <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Atividades Recentes
+              </CardTitle>
+              <CardDescription>
+                Últimas movimentações no sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loadingPendentes && (
+                <div className="text-sm text-muted-foreground">Carregando propostas pendentes...</div>
+              )}
+              {errorPendentes && (
+                <div className="text-sm text-red-600">Erro ao carregar propostas pendentes.</div>
+              )}
+              {!loadingPendentes && !errorPendentes && recentActivities.length === 0 && (
+                <div className="text-sm text-muted-foreground">Nenhuma proposta pendente.</div>
+              )}
+              {recentActivities.map((activity) => (
+                <div key={activity.id} className="flex items-start justify-between space-x-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">{activity.type}</p>
+                    <p className="text-sm text-muted-foreground">{activity.description}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">{activity.time}</p>
+                    <div className={`text-xs ${getStatusColor(activity.status)}`}>
+                      <Clock className="inline h-3 w-3 mr-1" />
+                      {activity.status === 'warning' ? 'Pendente' : activity.status}
                     </div>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
 
 
-            {/* Tarefas Pendentes */}
-            {/* <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
+          {/* Tarefas Pendentes */}
+          {/* <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
@@ -251,8 +281,8 @@ export default function AdminDashboard() {
                 ))}
               </CardContent>
             </Card> */}
-          </div>
         </div>
       </div>
-      );
+    </div>
+  );
 }
