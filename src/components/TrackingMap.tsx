@@ -81,8 +81,8 @@ const TrackingMap = () => {
   const { toast } = useToast();
   const { user } = useAuthStore();
   const markersRef = useRef<GMarker[]>([]);
+  const hasFitBoundsRef = useRef<boolean>(false);
 
-  // Helper: calcula status a partir dos dados da API
   const computeStatus = (v: VeiculoPosicaoRes): StatusVeiculo => {
     const updatedAt = v.rastreadoEm ? new Date(v.rastreadoEm).getTime() : NaN;
     const tooOld = Number.isFinite(updatedAt) ? (Date.now() - updatedAt) > 30 * 60 * 1000 : true; // > 30 min
@@ -92,7 +92,10 @@ const TrackingMap = () => {
   };
 
   // Query: busca posições dos veículos do cliente
-  const cpfCliente = useMemo(() => (user?.role === 'cliente' ? String(user.cpf).replace(/\D/g, '') : undefined), [user?.cpf]);
+  const cpfCliente = useMemo(
+    () => (user?.role === 'cliente' ? String(user.cpf).replace(/\D/g, '') : undefined),
+    [user?.cpf, user?.role]
+  );
   const { data, isError, error } = useQuery({
     queryKey: ['veiculos-posicoes', cpfCliente],
     queryFn: async () => {
@@ -213,7 +216,6 @@ const TrackingMap = () => {
     }
   };
 
-  // Inicializa o mapa apenas uma vez
   useEffect(() => {
     if (!isApiLoaded || !mapContainer.current || !window.google) return;
     try {
@@ -287,11 +289,12 @@ const TrackingMap = () => {
       markersRef.current.push(marker);
     });
 
-    // Ajusta o bounds para contemplar todos os veículos
-    if (vehicles.length > 0) {
+    // Ajusta o bounds apenas na primeira vez que recebemos veículos
+    if (vehicles.length > 0 && !hasFitBoundsRef.current) {
       const bounds = new window.google.maps.LatLngBounds();
       vehicles.forEach((v) => bounds.extend(v.coordenadas));
       mapRef.current.fitBounds(bounds);
+      hasFitBoundsRef.current = true; // Não ajustar novamente para preservar zoom/pan do usuário
     }
   }, [vehicles, isApiLoaded]);
 
