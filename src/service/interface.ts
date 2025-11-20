@@ -58,3 +58,13 @@ export interface VeiculoPosicaoRes {
     direcao?: number;
     rastreadoEm: string;
 };
+
+export interface GetDashboardAdminReq {
+    diasAtraso: number;
+}
+
+export interface GetDashboardAdminRes {
+    clientes: number;
+    apolices: number;
+    rastreadores: number;
+}

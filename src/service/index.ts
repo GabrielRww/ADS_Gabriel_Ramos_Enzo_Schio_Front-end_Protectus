@@ -1,6 +1,6 @@
 // src/service/index.ts
 import axios from "axios";
-import { EfetivaSeguroDto, GetSegurosPendentesByCpfRes, PostGetSegurosPendentesDto, SegurosPendentesV2Res, VeiculoPosicaoReq, VeiculoPosicaoRes } from "./interface";
+import { EfetivaSeguroDto, GetDashboardAdminReq, GetDashboardAdminRes, GetSegurosPendentesByCpfRes, PostGetSegurosPendentesDto, SegurosPendentesV2Res, VeiculoPosicaoReq, VeiculoPosicaoRes } from "./interface";
 
 /**
  * CONFIGURAÇÃO CENTRALIZADA DA API
@@ -253,5 +253,10 @@ export const getSegurosByCpf = async (data: PostGetSegurosPendentesDto): Promise
 
 export const getVeiculosPosicoes = async (data: VeiculoPosicaoReq): Promise<VeiculoPosicaoRes> => {
   const response = await api.get(`/insurances/veiculos-posicoes`, { params: data });
+  return response.data;
+};
+
+export const getDashboardAdmin = async (data: GetDashboardAdminReq): Promise<GetDashboardAdminRes> => {
+  const response = await api.get(`/insurances/dashboard-admin`, { params: data });
   return response.data;
 };

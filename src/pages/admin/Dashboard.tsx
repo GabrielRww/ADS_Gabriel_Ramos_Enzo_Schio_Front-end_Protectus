@@ -1,34 +1,56 @@
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, FileText, MapPin, AlertTriangle, TrendingUp, Clock, DollarSign, Activity } from "lucide-react";
+import { Users, FileText, MapPin, Clock, Activity } from "lucide-react";
+import { useQuery } from '@tanstack/react-query';
+import { getDashboardAdmin } from '@/service';
+import type { GetDashboardAdminRes } from '@/service/interface';
 
 export default function AdminDashboard() {
-  const metrics = [
-    {
-      title: "Total de Clientes",
-      value: "1,247",
-      change: "+12.5%",
-      icon: Users,
-      color: "text-blue-600"
-    },
-    {
-      title: "Apólices Ativas",
-      value: "856",
-      change: "+8.2%",
-      icon: FileText,
-      color: "text-green-600"
-    },
-    {
-      title: "Rastreadores Ativos",
-      value: "734",
-      change: "+5.1%",
-      icon: MapPin,
-      color: "text-purple-600"
+  const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'quarter'>('today');
+
+  const diasAtraso = useMemo(() => {
+    switch (period) {
+      case 'today': return 1;
+      case 'week': return 7;
+      case 'month': return 30;
+      case 'quarter': return 90;
+      default: return 30;
     }
-  ];
+  }, [period]);
+
+  const { data, isLoading, isError } = useQuery<GetDashboardAdminRes>({
+    queryKey: ['dashboard-admin', diasAtraso],
+    queryFn: () => getDashboardAdmin({ diasAtraso }),
+  });
+
+  interface DashboardMetric { title: string; value: string; icon: React.ComponentType<{ className?: string }>; color: string }
+  const metrics: DashboardMetric[] = useMemo(() => {
+    if (!data) return [];
+    return [
+      {
+        title: 'Total de Clientes',
+        value: String(data.clientes ?? 0),
+        icon: Users,
+        color: 'text-blue-600',
+      },
+      {
+        title: 'Apólices Ativas',
+        value: String(data.apolices ?? 0),
+        icon: FileText,
+        color: 'text-green-600',
+      },
+      {
+        title: 'Rastreadores Ativos',
+        value: String(data.rastreadores ?? 0),
+        icon: MapPin,
+        color: 'text-purple-600',
+      },
+    ];
+  }, [data]);
 
   const recentActivities = [
     { id: 1, type: "Novo Cliente", description: "João Silva cadastrado", time: "2 min atrás", status: "success" },
@@ -69,12 +91,12 @@ export default function AdminDashboard() {
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/20"></div>
         <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.07)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.07)_1px,transparent_1px)] bg-[size:32px_32px] animate-grid-flow"></div>
-        
+
         {/* Animated gradient orbs */}
         <div className="absolute top-20 left-10 w-96 h-96 bg-primary/5 rounded-full blur-[120px] animate-float"></div>
         <div className="absolute bottom-32 right-10 w-[500px] h-[500px] bg-accent/5 rounded-full blur-[140px] animate-float" style={{ animationDelay: '2s' }}></div>
         <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-primary/3 rounded-full blur-[100px] animate-glow-pulse"></div>
-        
+
         {/* Floating particles */}
         {[...Array(15)].map((_, i) => (
           <div
@@ -93,124 +115,144 @@ export default function AdminDashboard() {
       <div className="space-y-8 relative">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between animate-fade-in">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard Administrativo</h1>
-          <p className="text-muted-foreground">
-            Visão geral das operações da Protectus Seguros 
-          </p>
-        </div>
-        
-        {/* Filtros Rápidos */}
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <Select defaultValue="today">
-            <SelectTrigger className="w-full md:w-[180px]">
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Hoje</SelectItem>
-              <SelectItem value="week">Esta Semana</SelectItem>
-              <SelectItem value="month">Este Mês</SelectItem>
-              <SelectItem value="quarter">Trimestre</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Input 
-            placeholder="Buscar por cliente, placa..." 
-            className="w-full md:w-[250px]"
-          />
-          
-          <Button>Buscar</Button>
-        </div>
-      </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard Administrativo</h1>
+            <p className="text-muted-foreground">
+              Visão geral das operações da Protectus Seguros
+            </p>
+          </div>
 
-      {/* Métricas */}
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-        {metrics.map((metric, index) => {
-          const Icon = metric.icon;
-          return (
-            <Card key={index} className="relative overflow-hidden group border-primary/10 hover:border-primary/30 bg-card/80 backdrop-blur-sm hover:shadow-glow transition-all duration-300">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                <CardTitle className="text-sm font-medium">
-                  {metric.title}
+          {/* Filtros Rápidos */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <Select value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Hoje</SelectItem>
+                <SelectItem value="week">Esta Semana</SelectItem>
+                <SelectItem value="month">Este Mês</SelectItem>
+                <SelectItem value="quarter">Trimestre</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Input
+              placeholder="Buscar por cliente, placa..."
+              className="w-full md:w-[250px]"
+            />
+
+            <Button>Buscar</Button>
+          </div>
+        </div>
+
+        {/* Métricas */}
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          {isLoading && (
+            <>
+              {[...Array(3)].map((_, i) => (
+                <Card key={i} className="p-4 animate-pulse">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium h-4 bg-muted rounded w-1/2" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-6 bg-muted rounded w-1/3" />
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          )}
+          {isError && (
+            <Card className="p-4 col-span-3 border-red-400">
+              <CardContent className="p-2 text-sm text-red-600">Erro ao carregar métricas do dashboard.</CardContent>
+            </Card>
+          )}
+          {!isLoading && !isError && metrics.map((metric, index) => {
+            const Icon = metric.icon;
+            return (
+              <Card key={index} className="relative overflow-hidden group border-primary/10 hover:border-primary/30 bg-card/80 backdrop-blur-sm hover:shadow-glow transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                  <CardTitle className="text-sm font-medium">
+                    {metric.title}
+                  </CardTitle>
+                  <Icon className={`h-4 w-4 ${metric.color}`} />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{metric.value}</div>
+                  <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+          <div className="grid gap-6 lg:grid-cols-1 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            {/* Atividades Recentes */}
+            <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Atividades Recentes
                 </CardTitle>
-                <Icon className={`h-4 w-4 ${metric.color}`} />
+                <CardDescription>
+                  Últimas movimentações no sistema
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{metric.value}</div>
-                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                </div>
+              <CardContent className="space-y-4">
+                {recentActivities.map((activity) => (
+                  <div key={activity.id} className="flex items-start justify-between space-x-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{activity.type}</p>
+                      <p className="text-sm text-muted-foreground">{activity.description}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">{activity.time}</p>
+                      <div className={`text-xs ${getStatusColor(activity.status)}`}>
+                        <Clock className="inline h-3 w-3 mr-1" />
+                        {activity.status}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-        {/* Atividades Recentes */}
-        <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Atividades Recentes
-            </CardTitle>
-            <CardDescription>
-              Últimas movimentações no sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="flex items-start justify-between space-x-4">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">{activity.type}</p>
-                  <p className="text-sm text-muted-foreground">{activity.description}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">{activity.time}</p>
-                  <div className={`text-xs ${getStatusColor(activity.status)}`}>
-                    <Clock className="inline h-3 w-3 mr-1" />
-                    {activity.status}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
 
-        {/* Tarefas Pendentes */}
-        <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Tarefas Pendentes
-            </CardTitle>
-            <CardDescription>
-              Itens que precisam da sua atenção
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {pendingTasks.map((task) => (
-              <div key={task.id} className="flex items-center justify-between space-x-4 p-3 rounded-lg border">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">{task.task}</p>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={getPriorityColor(task.priority)}>
-                      {task.priority}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      Prazo: {task.deadline}
-                    </span>
+            {/* Tarefas Pendentes */}
+            {/* <Card className="bg-card/80 backdrop-blur-sm border-primary/10 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Tarefas Pendentes
+                </CardTitle>
+                <CardDescription>
+                  Itens que precisam da sua atenção
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {pendingTasks.map((task) => (
+                  <div key={task.id} className="flex items-center justify-between space-x-4 p-3 rounded-lg border">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{task.task}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={getPriorityColor(task.priority)}>
+                          {task.priority}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          Prazo: {task.deadline}
+                        </span>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline">
+                      Visualizar
+                    </Button>
                   </div>
-                </div>
-                <Button size="sm" variant="outline">
-                  Visualizar
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+                ))}
+              </CardContent>
+            </Card> */}
+          </div>
+        </div>
       </div>
-      </div>
-    </div>
-  );
+      );
 }
