@@ -68,7 +68,7 @@ export default function ClientDashboard() {
         {/* Welcome Section */}
         <div className="bg-gradient-primary rounded-lg p-6 text-primary-foreground animate-fade-in shadow-glow">
           <h1 className="text-2xl font-bold mb-2">
-            Olá{user?.nome ? ' ' + user.nome.split(' ')[0] + ',' : ''} bem-vindo!
+            Olá{user?.nome ? ' ' + user.nome.split(' ')[0] + ',' : ''} bem-vindo(a)!
           </h1>
           <p className="opacity-90">
             Gerencie seus seguros e mantenha-se protegido com a Protectus.

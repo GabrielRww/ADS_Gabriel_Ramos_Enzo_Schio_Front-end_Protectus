@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { GetSegurosPendentesByCpfRes } from '@/service/interface';
 import { useAuthStore } from '@/store/authStore';
 import { getSegurosByCpf } from '@/service';
+import { formatToBrazilianReal } from '@/utils/functions';
 
 export default function Apolices() {
   const { toast } = useToast();
@@ -39,30 +40,6 @@ export default function Apolices() {
       case 3: return House;
       default: return undefined;
     }
-  };
-
-
-  // const filtered = useMemo(() => {
-  //   return policies.segurosAtivos.filter((p) => {
-  //     const matchQuery = !query || `${p.apoliceId} ${p.idSeguro} ${p.objeto}`.toLowerCase().includes(query.toLowerCase());
-  //     const matchTipo =
-  //       tipoFilter === 'todos' ||
-  //       (tipoFilter === 'veiculo' && p.tipo === 'Veículo') ||
-  //       (tipoFilter === 'residencial' && p.tipo === 'Residencial') ||
-  //       (tipoFilter === 'celular' && p.tipo === 'Celular');
-  //     const matchStatus =
-  //       statusFilter === 'todos' ||
-  //       (statusFilter === 'ativo' && p.status === 'Ativo') ||
-  //       (statusFilter === 'pendente' && p.status === 'Pendente') ||
-  //       (statusFilter === 'cancelado' && p.status === 'Cancelado');
-  //     return matchQuery && matchTipo && matchStatus;
-  //   });
-  // }, [policies, query, tipoFilter, statusFilter]);
-
-  const handleClearFilters = () => {
-    setQuery('');
-    setTipoFilter('todos');
-    setStatusFilter('todos');
   };
 
 
@@ -144,14 +121,6 @@ export default function Apolices() {
   };
 
 
-  // if (isLoading) {
-  //   return <div>Carregando apólices...</div>;
-  // }
-
-  // if (isError) {
-  //   return <div>Erro ao carregar apólices.</div>;
-  // }
-
   const segurosAtivos = policies?.segurosAtivos || [];
   const segurosPendentes = policies?.segurosPendentes || [];
 
@@ -203,7 +172,7 @@ export default function Apolices() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{policy.vlrProdutoSegurado ? `R$ ${policy.vlrProdutoSegurado}` : '-'}</TableCell>
+                    <TableCell>{policy.vlrProdutoSegurado ? `${formatToBrazilianReal(String(policy.vlrProdutoSegurado || 0))}` : '-'}</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(policy.status)}>
                         {getStatusLabel(policy.status)}
@@ -259,7 +228,7 @@ export default function Apolices() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{policy.vlrProdutoSegurado ? `R$ ${policy.vlrProdutoSegurado}` : '-'}</TableCell>
+                    <TableCell>{policy.vlrProdutoSegurado ? `${formatToBrazilianReal(String(policy.vlrProdutoSegurado || 0))}` : '-'}</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(policy.status)}>
                         {getStatusLabel(policy.status)}

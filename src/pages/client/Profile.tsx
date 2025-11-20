@@ -15,15 +15,15 @@ export function ClientProfile() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // Estado para detectar mudanças não salvas
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  
+
   // Debug completo ao montar
   useEffect(() => {
     console.log('Profile: Componente montado com user', user);
   }, []);
-  
+
   // Helpers de formatação
   const onlyDigits = (v: string) => (v || '').replace(/\D/g, '');
   const fmtPhone = (v?: string) => {
@@ -46,9 +46,9 @@ export function ClientProfile() {
   };
 
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    nome: user?.nome || '',
     email: user?.email || '',
-    phone: fmtPhone((user as any)?.phone || (user as any)?.telefone),
+    telefone: fmtPhone((user as any)?.telefone || (user as any)?.telefone),
     cpfCnpj: fmtCpf((user as any)?.cpf),
     address: composeAddress(user)
   });
@@ -65,7 +65,7 @@ export function ClientProfile() {
     if (!user || isSaving) return;
 
     // Validação básica dos campos obrigatórios
-    if (!formData.name.trim()) {
+    if (!formData.nome.trim()) {
       toast({
         title: 'Nome obrigatório',
         description: 'Por favor, preencha seu nome completo.',
@@ -108,8 +108,8 @@ export function ClientProfile() {
     }
 
     // Validação do telefone (se preenchido)
-    if (formData.phone) {
-      const phoneDigits = onlyDigits(formData.phone);
+    if (formData.telefone) {
+      const phoneDigits = onlyDigits(formData.telefone);
       if (phoneDigits.length < 10) {
         toast({
           title: 'Telefone inválido',
@@ -124,10 +124,10 @@ export function ClientProfile() {
 
     // Monta payload mínimo esperado pelo backend; limpa campos numéricos
     const payload: Partial<User> & { telefone?: string; cpf?: string } = {
-      name: formData.name.trim(),
+      nome: formData.nome.trim(),
       email: formData.email.trim().toLowerCase(),
       address: formData.address.trim(),
-      phone: formData.phone?.replace(/\D/g, '') || undefined,
+      telefone: formData.telefone?.replace(/\D/g, '') || undefined,
       cpf: formData.cpfCnpj?.replace(/\D/g, '') || undefined,
       avatar: avatarUrl,
     };
@@ -141,32 +141,32 @@ export function ClientProfile() {
 
     // Atualização local imediata para UX
     const updated: User = { ...user, ...payload } as User;
-    
+
     try {
       localStorage.setItem('protectus-user', JSON.stringify(updated));
-      
+
       // Se existir backend habilitado, tenta enviar
       const resp = await apiService.updateProfile(user.id, payload);
-      
+
       if (resp.success) {
         // Se vier user do backend, usa ele; senão mantém o local
         const finalUser = (resp.data as User) || updated;
         localStorage.setItem('protectus-user', JSON.stringify(finalUser));
-        
+
         // atualiza store para refletir no header imediatamente
         useAuthStore.setState({ user: finalUser });
-        
-        toast({ 
-          title: 'Perfil atualizado com sucesso!', 
-          description: 'Suas informações foram salvas e sincronizadas.' 
+
+        toast({
+          title: 'Perfil atualizado com sucesso!',
+          description: 'Suas informações foram salvas e sincronizadas.'
         });
         setIsEditing(false);
         setHasUnsavedChanges(false);
       } else {
         // Mantém alteração local e avisa que ficou offline
         useAuthStore.setState({ user: updated });
-        toast({ 
-          title: 'Alterações salvas localmente', 
+        toast({
+          title: 'Alterações salvas localmente',
           description: 'Quando a API estiver disponível, faremos a sincronização.',
           variant: 'default'
         });
@@ -187,9 +187,9 @@ export function ClientProfile() {
 
   const handleCancel = () => {
     setFormData({
-      name: user?.name || '',
+      nome: user?.nome || '',
       email: user?.email || '',
-      phone: fmtPhone((user as any)?.phone || (user as any)?.telefone),
+      telefone: fmtPhone((user as any)?.telefone || (user as any)?.telefone),
       cpfCnpj: fmtCpf((user as any)?.cpf),
       address: composeAddress(user)
     });
@@ -212,7 +212,7 @@ export function ClientProfile() {
     if (resp.success && resp.data?.url) {
       setAvatarUrl(resp.data.url);
       const updated = { ...(user as any), avatar: resp.data.url } as User;
-      try { localStorage.setItem('protectus-user', JSON.stringify(updated)); } catch {}
+      try { localStorage.setItem('protectus-user', JSON.stringify(updated)); } catch { }
       useAuthStore.setState({ user: updated });
       toast({ title: 'Foto atualizada', description: 'Sua foto de perfil foi alterada.' });
     } else {
@@ -225,12 +225,11 @@ export function ClientProfile() {
   // Mantém os dados em sincronia quando o usuário for atualizado (ex.: pós-login/cadastro)
   useEffect(() => {
     if (user) {
-      const phoneFormatted = fmtPhone((user as any)?.phone || (user as any)?.telefone);
+      const phoneFormatted = fmtPhone((user as any)?.telefone || (user as any)?.telefone);
       const cpfFormatted = fmtCpf((user as any)?.cpf);
       const addressComposed = composeAddress(user);
-      
+
       console.log('Profile: Sincronizando dados do usuário', {
-        phone: (user as any)?.phone,
         telefone: (user as any)?.telefone,
         cpf: (user as any)?.cpf,
         address: user?.address,
@@ -238,11 +237,11 @@ export function ClientProfile() {
         cpfFormatted,
         addressComposed
       });
-      
+
       setFormData({
-        name: user?.name || '',
+        nome: user?.nome || '',
         email: user?.email || '',
-        phone: phoneFormatted,
+        telefone: phoneFormatted,
         cpfCnpj: cpfFormatted,
         address: addressComposed
       });
@@ -265,12 +264,13 @@ export function ClientProfile() {
           </h1>
           <p className="text-muted-foreground">Gerencie suas informações pessoais</p>
         </div>
-        
+
         {!isEditing ? (
-          <Button onClick={() => setIsEditing(true)} className="gap-2">
-            <Edit3 className="h-4 w-4" />
-            Editar Perfil
-          </Button>
+          // <Button onClick={() => setIsEditing(true)} className="gap-2">
+          //   <Edit3 className="h-4 w-4" />
+          //   Editar Perfil
+          // </Button>
+          null
         ) : (
           <div className="flex gap-2">
             <Button onClick={handleSave} disabled={isSaving} className="gap-2">
@@ -299,7 +299,7 @@ export function ClientProfile() {
               <Avatar className="h-32 w-32">
                 <AvatarImage src={avatarUrl} />
                 <AvatarFallback className="text-2xl">
-                  {user?.name?.split(' ').map(n => n[0]).join('')}
+                  {user?.nome?.split(' ').map(n => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               {isEditing && (
@@ -313,14 +313,6 @@ export function ClientProfile() {
                 </Button>
               )}
             </div>
-            {isEditing && (
-              <>
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onAvatarChange} />
-                <Button variant="outline" size="sm" onClick={onPickAvatar}>
-                  Alterar Foto
-                </Button>
-              </>
-            )}
           </CardContent>
         </Card>
 
@@ -335,18 +327,18 @@ export function ClientProfile() {
           <CardContent className="space-y-6">
             {/* Nome Completo */}
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Completo</Label>
+              <Label htmlFor="nome">Nome Completo</Label>
               {isEditing ? (
                 <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => updateFormData({ name: e.target.value })}
+                  id="nome"
+                  value={formData.nome}
+                  onChange={(e) => updateFormData({ nome: e.target.value })}
                   placeholder="Digite seu nome completo"
                   required
                 />
               ) : (
                 <p className="text-sm text-foreground bg-muted p-3 rounded-md">
-                  {formData.name || 'Não informado'}
+                  {formData.nome || 'Não informado'}
                 </p>
               )}
             </div>
@@ -376,21 +368,21 @@ export function ClientProfile() {
 
             {/* Telefone */}
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefone</Label>
+              <Label htmlFor="telefone">Telefone</Label>
               {isEditing ? (
                 <Input
-                  id="phone"
-                  value={formData.phone}
+                  id="telefone"
+                  value={formData.telefone}
                   onChange={(e) => {
                     const formatted = fmtPhone(e.target.value);
-                    updateFormData({ phone: formatted });
+                    updateFormData({ telefone: formatted });
                   }}
                   placeholder="(11) 99999-9999"
                   maxLength={15}
                 />
               ) : (
                 <p className="text-sm text-foreground bg-muted p-3 rounded-md">
-                  {formData.phone || 'Não informado'}
+                  {formData.telefone || 'Não informado'}
                 </p>
               )}
             </div>
