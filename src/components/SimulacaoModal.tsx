@@ -574,14 +574,14 @@ export default function SimulacaoModal({ open, onOpenChange, tipoSeguro: initial
                   <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-4">
                     {(() => {
                       console.log('[SimulacaoModal] simulationResult:', logic.simulationResult);
-                      let valor = logic.simulationResult?.vlrSeguro;
+                      const valor = logic.simulationResult?.vlrSeguro;
                       console.log('[SimulacaoModal] valor bruto:', valor);
 
                       // Se o valor for muito alto (provavelmente anual), dividir por 12
-                      if (valor && valor > 10000) {
-                        valor = valor / 12;
-                        console.log('[SimulacaoModal] valor dividido por 12 (mensal):', valor);
-                      }
+                      // if (valor && valor > 10000) {
+                      //   valor = valor / 12;
+                      //   console.log('[SimulacaoModal] valor dividido por 12 (mensal):', valor);
+                      // }
 
                       if (valor) {
                         return `R$ ${logic.formatCurrency(valor)}`;

@@ -448,6 +448,7 @@ export function useSimulacaoLogic(
         try {
           const result = await createSeguroImovel(simulationData);
 
+
           if (result) {
 
             setSimulationResult({

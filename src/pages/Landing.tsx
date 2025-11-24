@@ -144,20 +144,6 @@ export default function Landing() {
                   <span className="text-foreground font-semibold"> Simule, contrate e gerencie</span> tudo online de forma simples e segura.
                 </p>
               </div>
-              
-              <div className="flex justify-start">
-                <Button 
-                  size="lg" 
-                  className="relative bg-gradient-tech hover:scale-105 shadow-glow hover:shadow-glow-lg transition-all duration-300 group overflow-hidden h-14 px-8 text-lg"
-                  onClick={() => {
-                    setModalOpen(true);
-                  }}
-                >
-                  <Shield className="h-5 w-5 mr-2 relative z-10" />
-                  <span className="relative z-10 font-semibold">Simular Agora</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
-                </Button>
-              </div>
             </div>
             
             <div className="relative animate-scale-in">
@@ -281,16 +267,6 @@ export default function Landing() {
           <p className="text-xl text-primary-foreground/95 mb-8 max-w-2xl mx-auto leading-relaxed">
             Faça uma simulação gratuita em menos de 2 minutos e descubra a proteção ideal para você
           </p>
-          <Button 
-            size="lg" 
-            variant="secondary" 
-            className="shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 text-lg px-8 py-6 font-semibold"
-            onClick={() => {
-              setModalOpen(true);
-            }}
-          >
-            Simular Meu Seguro
-          </Button>
         </div>
       </section>
 
